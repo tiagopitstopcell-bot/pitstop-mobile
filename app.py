@@ -24,7 +24,7 @@ def conectar_db():
 
 
 if "pagina" not in st.session_state:
-    st.session_state.pagina = "🏠 Início"
+    st.session_state.pagina = "📋 Ordens de Serviço"
 
 if "impressao_os" not in st.session_state:
     st.session_state.impressao_os = None
@@ -34,30 +34,21 @@ def navegar_para(nome_pagina):
     st.session_state.pagina = nome_pagina
 
 
-# ESTILO VISUAL INSPIRADO NO MODELO
+# ESTILO VISUAL DA PITSTOP CELL
 st.markdown(
     """
     <style>
-    .main { background-color: #f4f6f9; }
+    .main { background-color: #0e1117; }
     div.stButton > button {
         border-radius: 8px;
         font-weight: bold;
     }
-    .card-menu {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
-        border: 1px solid #e0e0e0;
-        margin-bottom: 10px;
-    }
     .card-os {
-        background-color: #ffffff;
+        background-color: #1a1d24;
         padding: 15px;
         border-radius: 8px;
-        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
-        border: 1px solid #e2e8f0;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.2);
+        border: 1px solid #2b303c;
         margin-bottom: 12px;
     }
     .badge-status {
@@ -74,90 +65,86 @@ st.markdown(
 )
 
 
-# --- NAVEGAÇÃO LATERAL (OPCIONAL) ---
+# --- NAVEGAÇÃO LATERAL (MENU HAMBÚRGUER) ---
 with st.sidebar:
     if os.path.exists(NOME_LOGO):
         st.image(NOME_LOGO, use_container_width=True)
     st.title("PitStop Cell")
-    st.caption("Assistência Técnica")
+    st.caption("Assistência Técnica e Celulares")
     st.markdown("---")
     menu = st.radio(
         "Navegar",
         [
-            "🏠 Início",
             "📋 Ordens de Serviço",
             "🆕 Nova OS",
             "📦 Produtos",
             "👥 Clientes",
             "💰 Caixa & Relatórios",
         ],
+        index=[
+            "📋 Ordens de Serviço",
+            "🆕 Nova OS",
+            "📦 Produtos",
+            "👥 Clientes",
+            "💰 Caixa & Relatórios",
+        ].index(
+            st.session_state.pagina
+            if st.session_state.pagina in ["📋 Ordens de Serviço", "🆕 Nova OS", "📦 Produtos", "👥 Clientes", "💰 Caixa & Relatórios"]
+            else "📋 Ordens de Serviço"
+        ),
     )
     if menu != st.session_state.pagina:
         st.session_state.pagina = menu
 
 
-# --- TOPO DA APLICAÇÃO ---
-col_head1, col_head2 = st.columns([1, 4])
-with col_head1:
-    if os.path.exists(NOME_LOGO):
-        st.image(NOME_LOGO, width=70)
-with col_head2:
-    st.markdown("### **PitStop Cell**")
-    st.caption("Assistência Técnica e Celulares")
+# --- BANNER COMPLETO DO TOPO ---
+if os.path.exists(NOME_LOGO):
+    st.image(NOME_LOGO, use_container_width=True)
+else:
+    st.markdown("<h2 style='text-align: center;'>PitStop Cell</h2>", unsafe_allow_html=True)
+
+st.markdown("---")
+
+# --- BOTÕES DE ACESSO RÁPIDO (A BARRINHA VERMELHA DESTACA A PÁGINA ATIVA) ---
+st.caption("⚡ **Menu Principal**")
+
+# Definir os botões e suas páginas associadas
+b_os = "primary" if st.session_state.pagina == "📋 Ordens de Serviço" else "secondary"
+b_nova = "primary" if st.session_state.pagina == "🆕 Nova OS" else "secondary"
+b_prod = "primary" if st.session_state.pagina == "📦 Produtos" else "secondary"
+b_cli = "primary" if st.session_state.pagina == "👥 Clientes" else "secondary"
+b_cx = "primary" if st.session_state.pagina == "💰 Caixa & Relatórios" else "secondary"
+
+if st.button("📋 Ordens de Serviço", use_container_width=True, type=b_os):
+    navegar_para("📋 Ordens de Serviço")
+    st.rerun()
+
+if st.button("🆕 Nova OS", use_container_width=True, type=b_nova):
+    navegar_para("🆕 Nova OS")
+    st.rerun()
+
+if st.button("📦 Produtos / Peças", use_container_width=True, type=b_prod):
+    navegar_para("📦 Produtos")
+    st.rerun()
+
+if st.button("👥 Clientes", use_container_width=True, type=b_cli):
+    navegar_para("👥 Clientes")
+    st.rerun()
+
+if st.button("💰 Fluxo de Caixa / Relatórios", use_container_width=True, type=b_cx):
+    navegar_para("💰 Caixa & Relatórios")
+    st.rerun()
 
 st.markdown("---")
 
 
 # ==========================================
-# TELA INICIAL: GRID DE MENU (ESTILO APP NATIVO)
-# ==========================================
-if st.session_state.pagina == "🏠 Início":
-    st.subheader("Bem-vindo à PitStop Cell")
-
-    # Grid 2 Colunas para celular
-    g1, g2 = st.columns(2)
-
-    with g1:
-        if st.button("📋 Ordem Serviço", use_container_width=True):
-            navegar_para("📋 Ordens de Serviço")
-            st.rerun()
-
-        if st.button("👥 Clientes", use_container_width=True):
-            navegar_para("👥 Clientes")
-            st.rerun()
-
-        if st.button("📦 Produtos", use_container_width=True):
-            navegar_para("📦 Produtos")
-            st.rerun()
-
-    with g2:
-        if st.button("🆕 Nova OS", use_container_width=True, type="primary"):
-            navegar_para("🆕 Nova OS")
-            st.rerun()
-
-        if st.button("💰 Fluxo de Caixa", use_container_width=True):
-            navegar_para("💰 Caixa & Relatórios")
-            st.rerun()
-
-        if st.button("📊 Relatórios", use_container_width=True):
-            navegar_para("💰 Caixa & Relatórios")
-            st.rerun()
-
-
-# ==========================================
 # PAINEL DE ORDENS DE SERVIÇO
 # ==========================================
-elif st.session_state.pagina == "📋 Ordens de Serviço":
-    st.subheader("📋 Ordens de Serviço")
+if st.session_state.pagina == "📋 Ordens de Serviço":
+    st.subheader("📋 Painel de OS")
 
-    col_b1, col_b2 = st.columns([3, 1])
-    with col_b1:
-        busca = st.text_input("🔍 OS ou Cliente", placeholder="Pesquisar...")
-    with col_b2:
-        if st.button("➕ Nova", type="primary", use_container_width=True):
-            navegar_para("🆕 Nova OS")
-            st.rerun()
-
+    busca = st.text_input("🔍 OS ou Cliente", placeholder="Pesquisar...")
     somente_andamento = st.toggle("Listar somente OS em andamento", value=True)
 
     conn = conectar_db()
@@ -211,10 +198,10 @@ elif st.session_state.pagina == "📋 Ordens de Serviço":
                     f"""
                     <div class="card-os">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <strong>OS Nº: {os_id}</strong>
+                            <strong style="color:#ffffff;">OS Nº: {os_id}</strong>
                             <span class="badge-status" style="background-color: {cor_badge};">{status}</span>
                         </div>
-                        <div style="font-size: 0.9rem; color: #555; margin-top:5px;">
+                        <div style="font-size: 0.9rem; color: #cccccc; margin-top:8px;">
                             <b>Data Entrada:</b> {dt_in} | <b>Previsão:</b> {dt_out if dt_out else 'N/I'}<br>
                             <b>Cliente:</b> {cliente if cliente else 'Não Identificado'} ({tel if tel else ''})<br>
                             <b>Aparelho:</b> {aparelho} {f'({cor})' if cor else ''}<br>
@@ -232,9 +219,7 @@ elif st.session_state.pagina == "📋 Ordens de Serviço":
                         st.session_state.impressao_os = os_id
                 with c_act2:
                     if st.button(f"✏️ Editar", key=f"ed_{os_id}"):
-                        st.toast(
-                            f"Modo edição para OS #{os_id} em breve.", icon="✏️"
-                        )
+                        st.toast(f"Edição para OS #{os_id} em breve.", icon="✏️")
                 with c_act3:
                     if st.button(f"✅ Finalizar", key=f"fin_{os_id}"):
                         conn = conectar_db()
@@ -250,7 +235,7 @@ elif st.session_state.pagina == "📋 Ordens de Serviço":
 
                 st.divider()
 
-        # MODAL / PAINEL DE IMPRESSÃO
+        # MODAL / COMPROVANTE DE IMPRESSÃO
         if st.session_state.impressao_os:
             os_sel = st.session_state.impressao_os
             st.markdown("---")
@@ -335,13 +320,15 @@ Garantia: {d[18]}
             if st.button("Fechar Impressão"):
                 st.session_state.impressao_os = None
                 st.rerun()
+    else:
+        st.info("Nenhuma Ordem de Serviço encontrada.")
 
 
 # ==========================================
 # FORMULÁRIO COMPLETO DE NOVA OS
 # ==========================================
 elif st.session_state.pagina == "🆕 Nova OS":
-    st.subheader("🆕 Nova Ordem de Serviço")
+    st.subheader("🆕 Cadastrar Nova Ordem de Serviço")
 
     conn = conectar_db()
     cursor = conn.cursor()
@@ -405,7 +392,7 @@ elif st.session_state.pagina == "🆕 Nova OS":
             ],
         )
 
-        salvar = st.form_submit_button("💾 Cadastrar OS", type="primary")
+        salvar = st.form_submit_button("💾 Salvar OS", type="primary")
 
         if salvar:
             conn = conectar_db()
@@ -509,8 +496,8 @@ elif st.session_state.pagina == "📦 Produtos":
                 f"""
                 <div class="card-os" style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <b>Nome:</b> {row['descricao']}<br>
-                        <b>Valor:</b> R$ {row['preco_venda']:.2f} | <b>Qtd:</b> {row['quantidade']}
+                        <b style="color:#ffffff;">Nome:</b> {row['descricao']}<br>
+                        <b style="color:#cccccc;">Valor:</b> R$ {row['preco_venda']:.2f} | <b>Qtd:</b> {row['quantidade']}
                     </div>
                 </div>
                 """,
@@ -524,7 +511,7 @@ elif st.session_state.pagina == "📦 Produtos":
 # CLIENTES
 # ==========================================
 elif st.session_state.pagina == "👥 Clientes":
-    st.subheader("👥 Clientes")
+    st.subheader("👥 Clientes Cadastrados")
     conn = conectar_db()
     df_cli = pd.read_sql_query("SELECT * FROM clientes", conn)
     conn.close()
