@@ -5,7 +5,31 @@ def init_db():
     conn = sqlite3.connect("pitstop.db")
     cursor = conn.cursor()
 
-    # Tabela de Clientes com Endereço, E-mail e Observações
+    # Tabela de Configurações da Loja
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS configuracoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome_loja TEXT,
+            telefone TEXT,
+            endereco TEXT,
+            cidade TEXT,
+            cnpj TEXT,
+            link_google TEXT
+        )
+    """
+    )
+
+    cursor.execute("SELECT COUNT(*) FROM configuracoes")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute(
+            """
+            INSERT INTO configuracoes (nome_loja, telefone, endereco, cidade, cnpj, link_google)
+            VALUES ('PitStop Cell', '(48) 99999-9999', 'Rua Principal, 100', 'Palhoça - SC', '00.000.000/0001-00', 'https://maps.google.com/?q=PitStop+Cell')
+        """
+        )
+
+    # Tabela de Clientes com Data de Aniversário
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS clientes (
@@ -15,6 +39,7 @@ def init_db():
             cpf_cnpj TEXT,
             endereco TEXT,
             email TEXT,
+            data_nascimento TEXT,
             observacoes TEXT
         )
     """
