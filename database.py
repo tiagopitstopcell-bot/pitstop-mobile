@@ -5,7 +5,6 @@ def init_db():
   conn = sqlite3.connect('pitstop.db')
   cursor = conn.cursor()
 
-  # Tabela de Configurações da Loja
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS configuracoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,7 +24,6 @@ def init_db():
             VALUES ('PitStop Cell', '(48) 99999-9999', 'Rua Principal, 100', 'Palhoça - SC', '00.000.000/0001-00', 'https://maps.google.com/?q=PitStop+Cell')
         """)
 
-  # Tabela de Clientes
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +37,6 @@ def init_db():
         )
     """)
 
-  # Tabela de Ordens de Serviço
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS ordens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,24 +62,28 @@ def init_db():
         )
     """)
 
-  # Garante que a coluna data_entrega exista em bancos de dados já criados anteriormente
   cursor.execute('PRAGMA table_info(ordens)')
   colunas = [col[1] for col in cursor.fetchall()]
   if 'data_entrega' not in colunas:
     cursor.execute('ALTER TABLE ordens ADD COLUMN data_entrega TEXT')
 
-  # Tabela de Produtos / Estoque
+  # Tabela de Produtos com Fornecedor
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             descricao TEXT NOT NULL,
             categoria TEXT,
+            fornecedor TEXT,
             preco_venda REAL,
             quantidade INTEGER
         )
     """)
 
-  # Tabela de Fluxo de Caixa
+  cursor.execute('PRAGMA table_info(produtos)')
+  colunas_prod = [col[1] for col in cursor.fetchall()]
+  if 'fornecedor' not in colunas_prod:
+    cursor.execute('ALTER TABLE produtos ADD COLUMN fornecedor TEXT')
+
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS caixa (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
