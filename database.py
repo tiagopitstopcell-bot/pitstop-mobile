@@ -2,12 +2,11 @@ import sqlite3
 
 
 def init_db():
-    conn = sqlite3.connect("pitstop.db")
-    cursor = conn.cursor()
+  conn = sqlite3.connect('pitstop.db')
+  cursor = conn.cursor()
 
-    # Tabela de Configurações da Loja
-    cursor.execute(
-        """
+  # Tabela de Configurações da Loja
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS configuracoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome_loja TEXT,
@@ -17,21 +16,17 @@ def init_db():
             cnpj TEXT,
             link_google TEXT
         )
-    """
-    )
+    """)
 
-    cursor.execute("SELECT COUNT(*) FROM configuracoes")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute(
-            """
+  cursor.execute('SELECT COUNT(*) FROM configuracoes')
+  if cursor.fetchone()[0] == 0:
+    cursor.execute("""
             INSERT INTO configuracoes (nome_loja, telefone, endereco, cidade, cnpj, link_google)
             VALUES ('PitStop Cell', '(48) 99999-9999', 'Rua Principal, 100', 'Palhoça - SC', '00.000.000/0001-00', 'https://maps.google.com/?q=PitStop+Cell')
-        """
-        )
+        """)
 
-    # Tabela de Clientes com Data de Aniversário
-    cursor.execute(
-        """
+  # Tabela de Clientes
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
@@ -42,16 +37,15 @@ def init_db():
             data_nascimento TEXT,
             observacoes TEXT
         )
-    """
-    )
+    """)
 
-    # Tabela de Ordens de Serviço
-    cursor.execute(
-        """
+  # Tabela de Ordens de Serviço
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS ordens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             data_entrada TEXT,
             previsao_saida TEXT,
+            data_entrega TEXT,
             cliente_id INTEGER,
             marca TEXT,
             aparelho TEXT,
@@ -69,12 +63,16 @@ def init_db():
             condicao_pagamento TEXT,
             FOREIGN KEY(cliente_id) REFERENCES clientes(id)
         )
-    """
-    )
+    """)
 
-    # Tabela de Produtos / Estoque
-    cursor.execute(
-        """
+  # Garante que a coluna data_entrega exista em bancos de dados já criados anteriormente
+  cursor.execute('PRAGMA table_info(ordens)')
+  colunas = [col[1] for col in cursor.fetchall()]
+  if 'data_entrega' not in colunas:
+    cursor.execute('ALTER TABLE ordens ADD COLUMN data_entrega TEXT')
+
+  # Tabela de Produtos / Estoque
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS produtos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             descricao TEXT NOT NULL,
@@ -82,12 +80,10 @@ def init_db():
             preco_venda REAL,
             quantidade INTEGER
         )
-    """
-    )
+    """)
 
-    # Tabela de Fluxo de Caixa
-    cursor.execute(
-        """
+  # Tabela de Fluxo de Caixa
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS caixa (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             data TEXT,
@@ -96,8 +92,7 @@ def init_db():
             valor REAL,
             forma_pagamento TEXT
         )
-    """
-    )
+    """)
 
-    conn.commit()
-    conn.close()
+  conn.commit()
+  conn.close()
