@@ -163,7 +163,7 @@ if st.session_state.pagina == 'Início':
   col1, col2 = st.columns(2)
 
   with col1:
-    if st.button('📋\n\nOrdem Serviço', use_container_width=True):
+    if st.button('📊\n\nPainel Principal', use_container_width=True):
       st.session_state.pagina = 'OS_LISTA'
       st.rerun()
 
@@ -347,7 +347,7 @@ elif st.session_state.pagina == 'CLIENTES':
 
 
 # ==========================================
-# 📋 ORDENS DE SERVIÇO
+# 📊 PAINEL PRINCIPAL / ORDENS DE SERVIÇO
 # ==========================================
 elif st.session_state.pagina == 'OS_LISTA':
   col_back, col_new = st.columns([2, 1])
@@ -360,7 +360,7 @@ elif st.session_state.pagina == 'OS_LISTA':
       st.session_state.pagina = 'NOVA_OS'
       st.rerun()
 
-  st.subheader('📋 Ordens de Serviço')
+  st.subheader('📊 Painel Principal & Ordens de Serviço')
 
   busca = st.text_input('🔍 Buscar por OS ou Cliente')
   somente_andamento = st.toggle('Apenas OS em andamento', value=True)
@@ -885,18 +885,19 @@ elif st.session_state.pagina == 'NOVA_OS':
 
 
 # ==========================================
-# 🛒 PRODUTOS / ESTOQUE
+# 🛒 PRODUTOS / ESTOQUE & FORNECEDORES
 # ==========================================
 elif st.session_state.pagina == 'PRODUTOS':
   if st.button('← Voltar ao Início'):
     st.session_state.pagina = 'Início'
     st.rerun()
 
-  st.subheader('🛒 Produtos & Peças em Estoque')
+  st.subheader('🛒 Produtos, Peças & Fornecedores')
 
   with st.form('form_prod_aberto', clear_on_submit=True):
     p_desc = st.text_input('Descrição do Produto / Peça')
     p_cat = st.text_input('Categoria (ex: Tela, Bateria, Cabo)')
+    p_forn = st.text_input('Fornecedor (ex: Cel Express, Distrivel)')
     p_prec = st.number_input('Preço de Venda (R$)', min_value=0.0)
     p_qtd = st.number_input('Quantidade', min_value=1, value=1)
     btn_prod = st.form_submit_button('💾 Salvar Produto', type='primary')
@@ -905,20 +906,21 @@ elif st.session_state.pagina == 'PRODUTOS':
       conn = conectar_db()
       cursor = conn.cursor()
       cursor.execute(
-          'INSERT INTO produtos (descricao, categoria, preco_venda, quantidade)'
-          ' VALUES (?, ?, ?, ?)',
-          (p_desc, p_cat, p_prec, p_qtd),
+          'INSERT INTO produtos (descricao, categoria, fornecedor,'
+          ' preco_venda, quantidade) VALUES (?, ?, ?, ?, ?)',
+          (p_desc, p_cat, p_forn, p_prec, p_qtd),
       )
       conn.commit()
       conn.close()
-      st.success('Produto Cadastrado!')
+      st.success('Produto cadastrado com fornecedor!')
       st.rerun()
 
   st.markdown('---')
   conn = conectar_db()
   df_prod = pd.read_sql_query(
       "SELECT id AS 'ID', descricao AS 'Descrição', categoria AS 'Categoria',"
-      " preco_venda AS 'Preço (R$)', quantidade AS 'Qtd' FROM produtos",
+      " fornecedor AS 'Fornecedor', preco_venda AS 'Preço (R$)', quantidade AS"
+      " 'Qtd' FROM produtos",
       conn,
   )
   conn.close()
