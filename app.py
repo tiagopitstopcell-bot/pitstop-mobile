@@ -9,7 +9,6 @@ from database import init_db
 
 NOME_LOGO = "IMG-20260924-WA0001.jpg"
 
-# Configuração da Página Mobile First
 st.set_page_config(
     page_title="PitStop Cell",
     page_icon="📱",
@@ -24,34 +23,23 @@ def conectar_db():
     return sqlite3.connect("pitstop.db")
 
 
-# Controle de Navegação
 if "pagina" not in st.session_state:
     st.session_state.pagina = "Início"
 
 if "impressao_os" not in st.session_state:
     st.session_state.impressao_os = None
 
-# Converte imagem para Base64
 logo_base64 = ""
 if os.path.exists(NOME_LOGO):
     with open(NOME_LOGO, "rb") as image_file:
         logo_base64 = base64.b64encode(image_file.read()).decode()
 
-# --- CSS COM CORREÇÃO DE LEITURA E CORES ---
+# --- CSS BASE PITSTOP CELL ---
 st.markdown(
     f"""
     <style>
-    /* Fundo geral da aplicação */
-    .stApp {{
-        background-color: #f4f6f9 !important;
-    }}
     [data-testid="stSidebar"] {{ display: none; }}
     header {{ visibility: hidden; }}
-
-    /* Forçar cor do texto para escuro em toda a tela */
-    h1, h2, h3, h4, h5, h6, p, label, span, div {{
-        color: #1f2937 !important;
-    }}
 
     /* Barra Superior Azul */
     .top-header {{
@@ -67,32 +55,22 @@ st.markdown(
         box-shadow: 0px 3px 6px rgba(0,0,0,0.1);
     }}
     .top-header p, .top-header span {{
-        color: white !important;
+        color: #ffffff !important;
     }}
     .logo-circulo {{
         width: 48px;
         height: 48px;
         border-radius: 50%;
         object-fit: cover;
-        background-color: white;
-        border: 2px solid white;
-    }}
-    .header-title {{
-        font-size: 18px;
-        font-weight: bold;
-        margin: 0;
-    }}
-    .header-subtitle {{
-        font-size: 12px;
-        margin: 0;
-        opacity: 0.9;
+        background-color: #ffffff;
+        border: 2px solid #ffffff;
     }}
 
     /* Botões da Tela Inicial */
     div.stButton > button {{
         background-color: #ffffff !important;
-        color: #1f2937 !important;
-        border: 1px solid #d1d5db !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
         border-radius: 12px !important;
         padding: 18px 10px !important;
         font-weight: 600 !important;
@@ -100,28 +78,14 @@ st.markdown(
         box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05) !important;
         width: 100% !important;
     }}
-    div.stButton > button:hover {{
-        border-color: #2563eb !important;
-        color: #2563eb !important;
-    }}
 
-    /* Caixas de Texto / Form */
-    div[data-baseweb="input"] > div {{
-        background-color: #ffffff !important;
-        border: 1px solid #d1d5db !important;
-        border-radius: 8px !important;
-    }}
-    input {{
-        color: #1f2937 !important;
-    }}
-
-    /* Card de Itens */
+    /* Cards */
     .card-item {{
         background-color: #ffffff;
         padding: 15px;
         border-radius: 10px;
         box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
-        border: 1px solid #e5e7eb;
+        border: 1px solid #e2e8f0;
         margin-bottom: 12px;
     }}
     </style>
@@ -141,8 +105,8 @@ st.markdown(
     <div class="top-header">
         {tag_img}
         <div>
-            <p class="header-title">PitStop Cell</p>
-            <p class="header-subtitle">Assistência Técnica e Celulares</p>
+            <p style="font-size:18px; font-weight:bold; margin:0;">PitStop Cell</p>
+            <p style="font-size:12px; margin:0; opacity:0.9;">Assistência Técnica e Celulares</p>
         </div>
     </div>
 """,
@@ -185,7 +149,7 @@ if st.session_state.pagina == "Início":
 
 
 # ==========================================
-# 👥 CLIENTES (COM FORMULÁRIO ABERTO E VISÍVEL)
+# 👥 CLIENTES
 # ==========================================
 elif st.session_state.pagina == "CLIENTES":
     if st.button("← Voltar ao Início"):
@@ -199,6 +163,9 @@ elif st.session_state.pagina == "CLIENTES":
         nome = st.text_input("Nome Completo do Cliente")
         tel = st.text_input("Telefone / WhatsApp")
         cpf = st.text_input("CPF / CNPJ")
+        endereco = st.text_input("Endereço Completo")
+        email = st.text_input("E-mail")
+        obs = st.text_area("Observações sobre o Cliente")
         btn_c = st.form_submit_button("💾 Salvar Cliente", type="primary")
 
         if btn_c:
@@ -206,8 +173,8 @@ elif st.session_state.pagina == "CLIENTES":
                 conn = conectar_db()
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO clientes (nome, telefone, cpf_cnpj) VALUES (?, ?, ?)",
-                    (nome, tel, cpf),
+                    "INSERT INTO clientes (nome, telefone, cpf_cnpj, endereco, email, observacoes) VALUES (?, ?, ?, ?, ?, ?)",
+                    (nome, tel, cpf, endereco, email, obs),
                 )
                 conn.commit()
                 conn.close()
@@ -220,7 +187,10 @@ elif st.session_state.pagina == "CLIENTES":
     st.markdown("#### 📜 Clientes Cadastrados")
 
     conn = conectar_db()
-    df_cli = pd.read_sql_query("SELECT id AS 'ID', nome AS 'Nome', telefone AS 'Telefone', cpf_cnpj AS 'CPF/CNPJ' FROM clientes ORDER BY nome", conn)
+    df_cli = pd.read_sql_query(
+        "SELECT id AS 'ID', nome AS 'Nome', telefone AS 'Telefone', cpf_cnpj AS 'CPF/CNPJ', endereco AS 'Endereço', email AS 'E-mail', observacoes AS 'Observações' FROM clientes ORDER BY nome",
+        conn,
+    )
     conn.close()
 
     if not df_cli.empty:
@@ -264,7 +234,9 @@ elif st.session_state.pagina == "OS_LISTA":
         params.extend([f"%{busca}%", f"%{busca}%", busca])
 
     if somente_andamento:
-        query += " AND o.status NOT IN ('Pronto', 'Concluído', 'Entregue', 'Cancelado')"
+        query += (
+            " AND o.status NOT IN ('Pronto', 'Concluído', 'Entregue', 'Cancelado')"
+        )
 
     query += " ORDER BY o.id DESC"
     cursor.execute(query, params)
@@ -321,7 +293,6 @@ elif st.session_state.pagina == "OS_LISTA":
 
             st.divider()
 
-        # Modal de Impressão
         if st.session_state.impressao_os:
             os_sel = st.session_state.impressao_os
             st.markdown("---")
@@ -406,15 +377,21 @@ elif st.session_state.pagina == "NOVA_OS":
     dict_cli = {nome: cid for cid, nome in lista_cli}
     conn.close()
 
-    with st.form("form_nova_os"):
-        st.markdown("### 👤 Cliente")
-        opt_cli = st.selectbox(
-            "Cliente Cadastrado",
-            ["-- Cadastrar Novo Cliente --"] + list(dict_cli.keys()),
-        )
+    st.markdown("### 👤 Cliente")
+    opt_cli = st.selectbox(
+        "Selecione o Cliente Cadastrado ou crie um novo:",
+        ["-- Cadastrar Novo Cliente --"] + list(dict_cli.keys()),
+    )
+
+    c_nome, c_tel, c_end, c_email, c_obs = "", "", "", "", ""
+    if opt_cli == "-- Cadastrar Novo Cliente --":
         c_nome = st.text_input("Nome do Novo Cliente")
         c_tel = st.text_input("Telefone / WhatsApp")
+        c_end = st.text_input("Endereço Completo")
+        c_email = st.text_input("E-mail")
+        c_obs = st.text_area("Observações sobre o Cliente")
 
+    with st.form("form_nova_os"):
         st.markdown("---")
         st.markdown("### 📱 Equipamento")
         marca = st.text_input("Marca (Ex: Samsung, Apple, Motorola)")
@@ -432,10 +409,13 @@ elif st.session_state.pagina == "NOVA_OS":
         v_desc = st.number_input("Desconto (R$)", min_value=0.0, step=5.0)
         garantia = st.text_input("Garantia", value="90 dias")
         cond_pag = st.selectbox(
-            "Forma de Pagamento", ["PIX", "Dinheiro", "Cartão de Crédito", "Cartão de Débito"]
+            "Forma de Pagamento",
+            ["PIX", "Dinheiro", "Cartão de Crédito", "Cartão de Débito"],
         )
 
-        salvar = st.form_submit_button("💾 Salvar Ordem de Serviço", type="primary")
+        salvar = st.form_submit_button(
+            "💾 Salvar Ordem de Serviço", type="primary"
+        )
 
         if salvar:
             conn = conectar_db()
@@ -444,8 +424,8 @@ elif st.session_state.pagina == "NOVA_OS":
             if opt_cli == "-- Cadastrar Novo Cliente --":
                 if c_nome:
                     cursor.execute(
-                        "INSERT INTO clientes (nome, telefone) VALUES (?, ?)",
-                        (c_nome, c_tel),
+                        "INSERT INTO clientes (nome, telefone, endereco, email, observacoes) VALUES (?, ?, ?, ?, ?)",
+                        (c_nome, c_tel, c_end, c_email, c_obs),
                     )
                     cliente_id = cursor.lastrowid
                 else:
@@ -488,7 +468,7 @@ elif st.session_state.pagina == "NOVA_OS":
                         (
                             dt_hoje,
                             "Entrada",
-                            f"OS #{aparelho} - {c_nome if c_nome else 'Cliente'}",
+                            f"OS #{aparelho} - {c_nome if c_nome else opt_cli}",
                             total_calc,
                             cond_pag,
                         ),
@@ -536,7 +516,10 @@ elif st.session_state.pagina == "PRODUTOS":
 
     st.markdown("---")
     conn = conectar_db()
-    df_prod = pd.read_sql_query("SELECT id AS 'ID', descricao AS 'Descrição', categoria AS 'Categoria', preco_venda AS 'Preço (R$)', quantidade AS 'Qtd' FROM produtos", conn)
+    df_prod = pd.read_sql_query(
+        "SELECT id AS 'ID', descricao AS 'Descrição', categoria AS 'Categoria', preco_venda AS 'Preço (R$)', quantidade AS 'Qtd' FROM produtos",
+        conn,
+    )
     conn.close()
 
     if not df_prod.empty:
