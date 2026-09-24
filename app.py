@@ -31,27 +31,33 @@ if "pagina" not in st.session_state:
 if "impressao_os" not in st.session_state:
     st.session_state.impressao_os = None
 
-# Função para converter imagem em Base64 para exibir perfeitamente dentro do HTML
+# Converte imagem para Base64
 logo_base64 = ""
 if os.path.exists(NOME_LOGO):
     with open(NOME_LOGO, "rb") as image_file:
         logo_base64 = base64.b64encode(image_file.read()).decode()
 
-# --- CSS PERSONALIZADO (INTERFACE NATIVA MOBILE) ---
+# --- CSS COM CORREÇÃO DE LEITURA E CORES ---
 st.markdown(
     f"""
     <style>
+    /* Fundo geral da aplicação */
     .stApp {{
-        background-color: #f5f5f5 !important;
+        background-color: #f4f6f9 !important;
     }}
     [data-testid="stSidebar"] {{ display: none; }}
     header {{ visibility: hidden; }}
 
+    /* Forçar cor do texto para escuro em toda a tela */
+    h1, h2, h3, h4, h5, h6, p, label, span, div {{
+        color: #1f2937 !important;
+    }}
+
     /* Barra Superior Azul */
     .top-header {{
-        background-color: #3b82f6;
+        background-color: #2563eb;
         padding: 12px 15px;
-        color: white;
+        color: white !important;
         display: flex;
         align-items: center;
         gap: 12px;
@@ -59,6 +65,9 @@ st.markdown(
         margin-top: -60px;
         margin-bottom: 20px;
         box-shadow: 0px 3px 6px rgba(0,0,0,0.1);
+    }}
+    .top-header p, .top-header span {{
+        color: white !important;
     }}
     .logo-circulo {{
         width: 48px;
@@ -72,34 +81,41 @@ st.markdown(
         font-size: 18px;
         font-weight: bold;
         margin: 0;
-        color: white;
     }}
     .header-subtitle {{
         font-size: 12px;
         margin: 0;
         opacity: 0.9;
-        color: #e0e7ff;
     }}
 
-    /* Botões em Grade */
+    /* Botões da Tela Inicial */
     div.stButton > button {{
         background-color: #ffffff !important;
-        color: #374151 !important;
-        border: 1px solid #e5e7eb !important;
+        color: #1f2937 !important;
+        border: 1px solid #d1d5db !important;
         border-radius: 12px !important;
-        padding: 20px 10px !important;
+        padding: 18px 10px !important;
         font-weight: 600 !important;
-        font-size: 13px !important;
-        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.04) !important;
+        font-size: 14px !important;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05) !important;
         width: 100% !important;
-        height: 90px !important;
     }}
     div.stButton > button:hover {{
-        border-color: #3b82f6 !important;
-        color: #3b82f6 !important;
+        border-color: #2563eb !important;
+        color: #2563eb !important;
     }}
 
-    /* Cards de OS e Conteúdos */
+    /* Caixas de Texto / Form */
+    div[data-baseweb="input"] > div {{
+        background-color: #ffffff !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 8px !important;
+    }}
+    input {{
+        color: #1f2937 !important;
+    }}
+
+    /* Card de Itens */
     .card-item {{
         background-color: #ffffff;
         padding: 15px;
@@ -113,11 +129,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- CABEÇALHO AZUL COM LOGO CIRCULAR ---
+# --- CABEÇALHO AZUL PITSTOP CELL ---
 tag_img = (
     f'<img src="data:image/jpeg;base64,{logo_base64}" class="logo-circulo">'
     if logo_base64
-    else '<div class="logo-circulo" style="display:flex;align-items:center;justify-content:center;color:#3b82f6;font-weight:bold;">PS</div>'
+    else '<div class="logo-circulo" style="display:flex;align-items:center;justify-content:center;color:#2563eb;font-weight:bold;">PS</div>'
 )
 
 st.markdown(
@@ -135,7 +151,7 @@ st.markdown(
 
 
 # ==========================================
-# 🏠 TELA INICIAL (GRID NATIVO)
+# 🏠 TELA INICIAL
 # ==========================================
 if st.session_state.pagina == "Início":
 
@@ -169,7 +185,52 @@ if st.session_state.pagina == "Início":
 
 
 # ==========================================
-# 📋 ORDENS DE SERVIÇO (LISTAGEM & IMPRESSÃO)
+# 👥 CLIENTES (COM FORMULÁRIO ABERTO E VISÍVEL)
+# ==========================================
+elif st.session_state.pagina == "CLIENTES":
+    if st.button("← Voltar ao Início"):
+        st.session_state.pagina = "Início"
+        st.rerun()
+
+    st.subheader("👥 Cadastro e Gestão de Clientes")
+
+    st.markdown("#### ➕ Cadastrar Novo Cliente")
+    with st.form("form_cli_aberto", clear_on_submit=True):
+        nome = st.text_input("Nome Completo do Cliente")
+        tel = st.text_input("Telefone / WhatsApp")
+        cpf = st.text_input("CPF / CNPJ")
+        btn_c = st.form_submit_button("💾 Salvar Cliente", type="primary")
+
+        if btn_c:
+            if nome:
+                conn = conectar_db()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO clientes (nome, telefone, cpf_cnpj) VALUES (?, ?, ?)",
+                    (nome, tel, cpf),
+                )
+                conn.commit()
+                conn.close()
+                st.success(f"✅ Cliente '{nome}' cadastrado com sucesso!")
+                st.rerun()
+            else:
+                st.error("Por favor, digite o nome do cliente.")
+
+    st.markdown("---")
+    st.markdown("#### 📜 Clientes Cadastrados")
+
+    conn = conectar_db()
+    df_cli = pd.read_sql_query("SELECT id AS 'ID', nome AS 'Nome', telefone AS 'Telefone', cpf_cnpj AS 'CPF/CNPJ' FROM clientes ORDER BY nome", conn)
+    conn.close()
+
+    if not df_cli.empty:
+        st.dataframe(df_cli, use_container_width=True)
+    else:
+        st.info("Nenhum cliente cadastrado ainda.")
+
+
+# ==========================================
+# 📋 ORDENS DE SERVIÇO
 # ==========================================
 elif st.session_state.pagina == "OS_LISTA":
     col_back, col_new = st.columns([2, 1])
@@ -184,7 +245,7 @@ elif st.session_state.pagina == "OS_LISTA":
 
     st.subheader("📋 Ordens de Serviço")
 
-    busca = st.text_input("🔍 Buscar OS ou Cliente")
+    busca = st.text_input("🔍 Buscar por OS ou Cliente")
     somente_andamento = st.toggle("Apenas OS em andamento", value=True)
 
     conn = conectar_db()
@@ -228,9 +289,9 @@ elif st.session_state.pagina == "OS_LISTA":
                 <div class="card-item">
                     <div style="display:flex; justify-content:space-between;">
                         <b>OS Nº: #{os_id}</b>
-                        <span style="background-color:#3b82f6; color:white; padding:2px 8px; border-radius:10px; font-size:12px;">{status}</span>
+                        <span style="background-color:#2563eb; color:white; padding:2px 8px; border-radius:10px; font-size:12px;">{status}</span>
                     </div>
-                    <div style="font-size:13px; color:#4b5563; margin-top:5px;">
+                    <div style="font-size:13px; color:#374151; margin-top:5px;">
                         <b>Cliente:</b> {cliente if cliente else 'S/ Cadastro'} ({tel if tel else 'S/ Tel'})<br>
                         <b>Aparelho:</b> {aparelho} {f'({cor})' if cor else ''}<br>
                         <b>Defeito:</b> {defeito}<br>
@@ -453,73 +514,35 @@ elif st.session_state.pagina == "PRODUTOS":
 
     st.subheader("🛒 Produtos & Peças em Estoque")
 
-    with st.expander("➕ Cadastrar Novo Produto"):
-        with st.form("form_prod"):
-            p_desc = st.text_input("Descrição do Produto / Peça")
-            p_cat = st.text_input("Categoria (ex: Tela, Bateria, Cabo)")
-            p_prec = st.number_input("Preço de Venda (R$)", min_value=0.0)
-            p_qtd = st.number_input("Quantidade", min_value=1, value=1)
-            btn_prod = st.form_submit_button("Salvar Produto")
+    st.markdown("#### ➕ Cadastrar Novo Produto")
+    with st.form("form_prod_aberto", clear_on_submit=True):
+        p_desc = st.text_input("Descrição do Produto / Peça")
+        p_cat = st.text_input("Categoria (ex: Tela, Bateria, Cabo)")
+        p_prec = st.number_input("Preço de Venda (R$)", min_value=0.0)
+        p_qtd = st.number_input("Quantidade", min_value=1, value=1)
+        btn_prod = st.form_submit_button("💾 Salvar Produto", type="primary")
 
-            if btn_prod and p_desc:
-                conn = conectar_db()
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO produtos (descricao, categoria, preco_venda, quantidade) VALUES (?, ?, ?, ?)",
-                    (p_desc, p_cat, p_prec, p_qtd),
-                )
-                conn.commit()
-                conn.close()
-                st.success("Produto Cadastrado!")
-                st.rerun()
+        if btn_prod and p_desc:
+            conn = conectar_db()
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO produtos (descricao, categoria, preco_venda, quantidade) VALUES (?, ?, ?, ?)",
+                (p_desc, p_cat, p_prec, p_qtd),
+            )
+            conn.commit()
+            conn.close()
+            st.success("Produto Cadastrado!")
+            st.rerun()
 
+    st.markdown("---")
     conn = conectar_db()
-    df_prod = pd.read_sql_query("SELECT * FROM produtos", conn)
+    df_prod = pd.read_sql_query("SELECT id AS 'ID', descricao AS 'Descrição', categoria AS 'Categoria', preco_venda AS 'Preço (R$)', quantidade AS 'Qtd' FROM produtos", conn)
     conn.close()
 
     if not df_prod.empty:
         st.dataframe(df_prod, use_container_width=True)
     else:
         st.info("Nenhum produto em estoque.")
-
-
-# ==========================================
-# 👥 CLIENTES
-# ==========================================
-elif st.session_state.pagina == "CLIENTES":
-    if st.button("← Voltar ao Início"):
-        st.session_state.pagina = "Início"
-        st.rerun()
-
-    st.subheader("👥 Gestão de Clientes")
-
-    with st.expander("➕ Cadastrar Cliente"):
-        with st.form("form_cli"):
-            nome = st.text_input("Nome Completo")
-            tel = st.text_input("Telefone")
-            cpf = st.text_input("CPF / CNPJ")
-            btn_c = st.form_submit_button("Salvar Cliente")
-
-            if btn_c and nome:
-                conn = conectar_db()
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO clientes (nome, telefone, cpf_cnpj) VALUES (?, ?, ?)",
-                    (nome, tel, cpf),
-                )
-                conn.commit()
-                conn.close()
-                st.success("Cliente Salvo!")
-                st.rerun()
-
-    conn = conectar_db()
-    df_cli = pd.read_sql_query("SELECT * FROM clientes", conn)
-    conn.close()
-
-    if not df_cli.empty:
-        st.dataframe(df_cli, use_container_width=True)
-    else:
-        st.info("Nenhum cliente cadastrado.")
 
 
 # ==========================================
