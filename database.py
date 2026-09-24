@@ -13,7 +13,8 @@ def init_db():
             nome TEXT NOT NULL,
             telefone TEXT,
             whatsapp TEXT,
-            cpf_cnpj TEXT
+            cpf_cnpj TEXT,
+            endereco TEXT
         )
     """
     )
@@ -33,25 +34,30 @@ def init_db():
     """
     )
 
-    # Tabela de Ordens de Serviço
+    # Tabela de Ordens de Serviço (Ampliada com campos do modelo)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS ordens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             data_entrada TEXT NOT NULL,
+            previsao_saida TEXT,
             cliente_id INTEGER,
+            marca TEXT,
             aparelho TEXT NOT NULL,
+            cor TEXT,
             imei TEXT,
+            senha TEXT,
+            acessorios TEXT,
             defeito TEXT NOT NULL,
             diagnostico TEXT,
-            servico TEXT,
             peca_id INTEGER,
             valor_peca REAL DEFAULT 0.0,
             mao_de_obra REAL DEFAULT 0.0,
             desconto REAL DEFAULT 0.0,
             total REAL DEFAULT 0.0,
-            status TEXT DEFAULT 'Recebido',
+            status TEXT DEFAULT 'Em orçamento',
             garantia TEXT,
+            condicao_pagamento TEXT,
             observacoes TEXT,
             FOREIGN KEY (cliente_id) REFERENCES clientes (id),
             FOREIGN KEY (peca_id) REFERENCES produtos (id)
@@ -59,7 +65,7 @@ def init_db():
     """
     )
 
-    # Tabela de Movimentações de Caixa
+    # Tabela de Caixa
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS caixa (
