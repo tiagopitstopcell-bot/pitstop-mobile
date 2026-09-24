@@ -1,64 +1,111 @@
 import streamlit as st
 import sqlite3
-from datetime import datetime
+from datetime import datetime, date
 
-# Configuração da página
-st.set_page_config(page_title="PitStopCell", page_icon="📱", layout="wide")
+# Configuração da página com tema claro para ficar igual ao app de referência
+st.set_page_config(page_title="Ordem de Serviço PRO", page_icon="🛠️", layout="wide")
 
-# Função para conectar ao banco de dados SQLite
+# CSS Personalizado para recriar o visual das imagens
+st.markdown("""
+    <style>
+        /* Estilo do cabeçalho azul */
+        .main-header {
+            background-color: #3b82f6;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        /* Cartão de OS estilo App */
+        .os-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            color: #1f2937;
+        }
+        
+        /* Badges de Status */
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            margin-right: 5px;
+        }
+        .bg-aberta { background-color: #22c55e; }
+        .bg-aguardando-peca { background-color: #ef4444; }
+        .bg-aguardando-cliente { background-color: #ef4444; }
+        .bg-andamento { background-color: #3b82f6; }
+        .bg-concluida { background-color: #f59e0b; }
+        
+        /* Modelo do Recibo Térmico / A4 */
+        .recibo-box {
+            background-color: #ffffff;
+            border: 1px dashed #9ca3af;
+            padding: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #000;
+            max-width: 450px;
+            margin: auto;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Conexão à base de dados
 def get_connection():
-    conn = sqlite3.connect('pitstop.db')
-    return conn
+    return sqlite3.connect('pitstop.db')
 
-# Garantir que todas as tabelas existam
+# Inicialização do Banco de Dados
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     
-    # 1. Tabela de Clientes
+    # Clientes
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             telefone TEXT,
-            cpf TEXT,
-            email TEXT
+            endereco TEXT,
+            cpf_cnpj TEXT
         )
     """)
     
-    # 2. Tabela de Ordens de Serviço (OS)
+    # Ordens de Serviço
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ordens_servico (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cliente_id INTEGER NOT NULL,
             aparelho TEXT NOT NULL,
+            marca TEXT,
             defeito TEXT NOT NULL,
             status TEXT NOT NULL,
-            valor REAL,
-            observacoes TEXT,
+            data_entrada TEXT NOT NULL,
+            previsao_saida TEXT,
+            data_garantia TEXT,
+            condicao_pagamento TEXT,
             FOREIGN KEY (cliente_id) REFERENCES clientes (id)
         )
     """)
-
-    # 3. Tabela de Estoque / Produtos
+    
+    # Peças e Serviços da OS
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS estoque (
+        CREATE TABLE IF NOT EXISTS os_itens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            quantidade INTEGER NOT NULL,
-            preco_custo REAL,
-            preco_venda REAL
-        )
-    """)
-
-    # 4. Tabela de Vendas (PDV e Financeiro)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS vendas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            os_id INTEGER NOT NULL,
+            tipo TEXT NOT NULL, -- 'Peça' ou 'Serviço'
             descricao TEXT NOT NULL,
             valor REAL NOT NULL,
-            data TEXT NOT NULL,
-            tipo TEXT NOT NULL
+            FOREIGN KEY (os_id) REFERENCES ordens_servico (id)
         )
     """)
     
@@ -67,300 +114,198 @@ def init_db():
 
 init_db()
 
-# Título do App
-st.title("📱 PitStopCell - Gestão de Assistência")
+# Cabeçalho Principal
+st.markdown('<div class="main-header">🛠️ Ordem de Serviço</div>', unsafe_allow_html=True)
 
-# Menu de Navegação Lateral
+# Menu Lateral
 st.sidebar.title("Navegação")
-modulo = st.sidebar.radio("Ir para:", ["Dashboard", "CRM / Clientes", "Estoque", "Ordem de Serviço (OS)", "PDV / Vendas", "Financeiro"])
+modulo = st.sidebar.radio("Ir para:", ["Ordens de Serviço", "Nova OS", "Clientes", "Configurações da Empresa"])
 
 # ---------------------------------------------------------
-# MÓDULO 1: DASHBOARD
+# MÓDULO 1: LISTA DE ORDENS DE SERVIÇO (CARDS)
 # ---------------------------------------------------------
-if modulo == "Dashboard":
-    st.header("📊 Dashboard Geral")
+if modulo == "Ordens de Serviço":
+    col_busca, col_add = st.columns([4, 1])
+    with col_busca:
+        busca = st.text_input("🔍 OS ou Cliente", placeholder="Pesquisar...")
+    
+    somente_andamento = st.toggle("Listar somente OS em andamento", value=True)
     
     conn = get_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT COUNT(*) FROM clientes")
-    total_clientes = cursor.fetchone()[0]
+    query = """
+        SELECT os.id, os.data_entrada, os.previsao_saida, c.nome, os.status, os.aparelho
+        FROM ordens_servico os
+        JOIN clientes c ON os.cliente_id = c.id
+        WHERE 1=1
+    """
+    params = []
     
-    cursor.execute("SELECT COUNT(*) FROM ordens_servico WHERE status != 'Concluída' AND status != 'Cancelada'")
-    os_abertas = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM estoque WHERE quantidade <= 3")
-    estoque_baixo = cursor.fetchone()[0]
-
-    hoje = datetime.now().strftime("%Y-%m-%d")
-    cursor.execute("SELECT SUM(valor) FROM vendas WHERE data LIKE ?", (f"{hoje}%",))
-    vendas_hoje = cursor.fetchone()[0] or 0.0
-    
-    conn.close()
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Vendas Hoje", f"R$ {vendas_hoje:.2f}")
-    col2.metric("Clientes Cadastrados", total_clientes)
-    col3.metric("OS em Aberto", os_abertas)
-    col4.metric("Estoque Baixo (≤3)", estoque_baixo)
-
-# ---------------------------------------------------------
-# MÓDULO 2: CRM / CLIENTES
-# ---------------------------------------------------------
-elif modulo == "CRM / Clientes":
-    st.header("👥 Gestão de Clientes")
-    
-    aba1, aba2 = st.tabs(["➕ Cadastrar Cliente", "📋 Lista de Clientes"])
-    
-    with aba1:
-        st.subheader("Novo Cadastro")
-        with st.form("form_cliente", clear_on_submit=True):
-            nome = st.text_input("Nome Completo *")
-            telefone = st.text_input("Telefone / WhatsApp")
-            cpf = st.text_input("CPF")
-            email = st.text_input("E-mail")
-            
-            submetido = st.form_submit_button("Salvar Cliente")
-            
-            if submetido:
-                if not nome.strip():
-                    st.error("O campo 'Nome Completo' é obrigatório!")
-                else:
-                    conn = get_connection()
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "INSERT INTO clientes (nome, telefone, cpf, email) VALUES (?, ?, ?, ?)",
-                        (nome, telefone, cpf, email)
-                    )
-                    conn.commit()
-                    conn.close()
-                    st.success(f"Cliente **{nome}** cadastrado com sucesso!")
-
-    with aba2:
-        st.subheader("Clientes Cadastrados")
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, telefone, cpf, email FROM clientes ORDER BY id DESC")
-        dados = cursor.fetchall()
-        conn.close()
+    if somente_andamento:
+        query += " AND os.status != 'Finalizada' AND os.status != 'Cancelada'"
+    if busca:
+        query += " AND (c.nome LIKE ? OR os.id LIKE ? OR os.aparelho LIKE ?)"
+        params.extend([f"%{busca}%", f"%{busca}%", f"%{busca}%"])
         
-        if dados:
-            st.dataframe(
-                dados, 
-                column_config={"0": "ID", "1": "Nome", "2": "Telefone", "3": "CPF", "4": "E-mail"},
-                use_container_width=True
-            )
-        else:
-            st.info("Nenhum cliente cadastrado ainda.")
-
-# ---------------------------------------------------------
-# MÓDULO 3: ESTOQUE
-# ---------------------------------------------------------
-elif modulo == "Estoque":
-    st.header("📦 Controle de Estoque e Peças")
+    query += " ORDER BY os.id DESC"
+    cursor.execute(query, params)
+    lista_os = cursor.fetchall()
+    conn.close()
     
-    aba1, aba2 = st.tabs(["➕ Cadastrar Item", "📋 Consultar Estoque"])
-    
-    with aba1:
-        st.subheader("Adicionar Peça / Produto")
-        with st.form("form_estoque", clear_on_submit=True):
-            nome_item = st.text_input("Nome do Produto/Peça *")
-            qtd = st.number_input("Quantidade em Estoque *", min_value=1, step=1)
-            preco_custo = st.number_input("Preço de Custo (R$)", min_value=0.0, format="%.2f")
-            preco_venda = st.number_input("Preço de Venda (R$)", min_value=0.0, format="%.2f")
+    for os_item in lista_os:
+        os_id, dt_in, dt_out, cliente, status, aparelho = os_item
+        
+        # Seleção de classe CSS para as cores das badges de status
+        badge_class = "bg-andamento"
+        if status == "Aguardando cliente":
+            badge_class = "bg-aguardando-cliente"
+        elif status == "Aguardando peça":
+            badge_class = "bg-aguardando-peca"
+        elif status == "Aberta":
+            badge_class = "bg-aberta"
+        elif status == "Finalizada":
+            badge_class = "bg-concluida"
             
-            submeter_item = st.form_submit_button("Salvar no Estoque")
+        with st.container():
+            st.markdown(f"""
+                <div class="os-card">
+                    <b>OS: {os_id}</b><br>
+                    <small><b>Data Entrada:</b> {dt_in}</small><br>
+                    <small><b>Previsão Saída:</b> {dt_out or 'N/A'}</small><br>
+                    <b>Cliente:</b> {cliente} ({aparelho})<br><br>
+                    <span class="badge {badge_class}">{status}</span>
+                </div>
+            """, unsafe_allow_html=True)
             
-            if submeter_item:
-                if not nome_item.strip():
-                    st.error("Informe o nome do item!")
-                else:
-                    conn = get_connection()
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "INSERT INTO estoque (nome, quantidade, preco_custo, preco_venda) VALUES (?, ?, ?, ?)",
-                        (nome_item, qtd, preco_custo, preco_venda)
-                    )
-                    conn.commit()
-                    conn.close()
-                    st.success(f"Item **{nome_item}** adicionado ao estoque!")
+            c1, c2, c3 = st.columns([1, 1, 2])
+            with c1:
+                if st.button("🖨️ Imprimir OS", key=f"imp_{os_id}"):
+                    st.session_state['imprimir_os_id'] = os_id
+            with c2:
+                if st.button("✏️ Editar/Itens", key=f"edt_{os_id}"):
+                    st.session_state['editar_os_id'] = os_id
 
-    with aba2:
-        st.subheader("Itens Cadastrados")
+    # Modal / Secção de Impressão (Geração de Recibo/A4)
+    if 'imprimir_os_id' in st.session_state and st.session_state['imprimir_os_id']:
+        os_imp_id = st.session_state['imprimir_os_id']
+        st.divider()
+        st.subheader(f"📄 Impressão da OS #{os_imp_id}")
+        
+        tipo_impressao = st.radio("Qual tipo de impressão deseja?", ["Térmica (80mm)", "Impressão A4"], horizontal=True)
+        
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, quantidade, preco_custo, preco_venda FROM estoque ORDER BY id DESC")
+        cursor.execute("""
+            SELECT os.id, os.data_entrada, os.previsao_saida, os.data_garantia, os.aparelho, os.marca, os.defeito, os.condicao_pagamento, c.nome, c.telefone, c.endereco, c.cpf_cnpj
+            FROM ordens_servico os
+            JOIN clientes c ON os.cliente_id = c.id
+            WHERE os.id = ?
+        """, (os_imp_id,))
+        dados = cursor.fetchone()
+        
+        cursor.execute("SELECT tipo, descricao, valor FROM os_itens WHERE os_id = ?", (os_imp_id,))
         itens = cursor.fetchall()
         conn.close()
         
-        if itens:
-            st.dataframe(
-                itens,
-                column_config={
-                    "0": "ID",
-                    "1": "Produto / Peça",
-                    "2": "Qtd",
-                    "3": "Custo (R$)",
-                    "4": "Venda (R$)"
-                },
-                use_container_width=True
-            )
-        else:
-            st.info("Nenhum item cadastrado no estoque.")
+        if dados:
+            total_os = sum([i[2] for i in itens]) if itens else 0.0
+            
+            # Recibo visual no estilo da imagem 3
+            st.markdown(f"""
+                <div class="recibo-box">
+                    <center>
+                        <h3>PitStopCell</h3>
+                        <p><small>Assistência Técnica Especializada</small></p>
+                        <hr>
+                        <h4>Ordem de Serviço {dados[0]}</h4>
+                    </center>
+                    <p><b>Garantia Até:</b> {dados[3] or 'N/A'}</p>
+                    <p><b>Data Entrada:</b> {dados[1]} &nbsp;&nbsp; <b>Previsão Saída:</b> {dados[2] or 'N/A'}</p>
+                    <hr>
+                    <p><b>Cliente:</b> {dados[8]}</p>
+                    <p><b>Telefone:</b> {dados[9] or 'N/A'}</p>
+                    <p><b>Modelo:</b> {dados[4]} &nbsp;&nbsp; <b>Marca:</b> {dados[5] or 'N/A'}</p>
+                    <p><b>Reclamação/Defeito:</b> {dados[6]}</p>
+                    <hr>
+                    <b>Itens / Serviços:</b><br>
+                    {"".join([f"<p>- {it[1]} ({it[0]}): R$ {it[2]:.2f}</p>" for it in itens]) if itens else "<p>Nenhum item adicionado.</p>"}
+                    <hr>
+                    <h4>Valor Total: R$ {total_os:.2f}</h4>
+                    <p><small>Condição de Pagamento: {dados[7] or 'À vista'}</small></p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        if st.button("Fechar Impressão"):
+            st.session_state['imprimir_os_id'] = None
+            st.rerun()
 
 # ---------------------------------------------------------
-# MÓDULO 4: ORDEM DE SERVIÇO (OS)
+# MÓDULO 2: NOVA ORDEM DE SERVIÇO / ADICIONAR PEÇAS
 # ---------------------------------------------------------
-elif modulo == "Ordem de Serviço (OS)":
-    st.header("🛠️ Ordens de Serviço")
-    
-    aba1, aba2 = st.tabs(["➕ Nova OS", "📋 Gerenciar OS"])
+elif modulo == "Nova OS":
+    st.subheader("📝 Abertura de Nova OS")
     
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM clientes ORDER BY nome ASC")
-    lista_clientes = cursor.fetchall()
+    clientes = cursor.fetchall()
     conn.close()
     
-    dict_clientes = {f"{c[1]} (ID: {c[0]})": c[0] for c in lista_clientes}
-
-    with aba1:
-        st.subheader("Dar Entrada em OS")
-        
-        if not dict_clientes:
-            st.warning("Cadastre pelo menos um cliente no módulo 'CRM / Clientes' antes de abrir uma OS.")
-        else:
-            with st.form("form_os", clear_on_submit=True):
-                cliente_selecionado = st.selectbox("Selecione o Cliente *", options=list(dict_clientes.keys()))
-                aparelho = st.text_input("Modelo do Aparelho *")
-                defeito = st.text_area("Defeito Relatado / Serviço *")
-                status = st.selectbox("Status Inicial", ["Em Análise", "Aguardando Peça", "Em Manutenção", "Pronto", "Concluída", "Cancelada"])
-                valor = st.number_input("Orçamento Estimado (R$)", min_value=0.0, format="%.2f")
-                observacoes = st.text_area("Observações Internas")
-                
-                submeter_os = st.form_submit_button("Salvar Ordem de Serviço")
-                
-                if submeter_os:
-                    if not aparelho.strip() or not defeito.strip():
-                        st.error("Preencha o modelo do aparelho e o defeito!")
-                    else:
-                        cliente_id = dict_clientes[cliente_selecionado]
-                        conn = get_connection()
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            INSERT INTO ordens_servico (cliente_id, aparelho, defeito, status, valor, observacoes)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        """, (cliente_id, aparelho, defeito, status, valor, observacoes))
-                        conn.commit()
-                        conn.close()
-                        st.success(f"OS para **{aparelho}** criada com sucesso!")
-
-    with aba2:
-        st.subheader("Ordens de Serviço Cadastradas")
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT os.id, c.nome, os.aparelho, os.defeito, os.status, os.valor, os.observacoes
-            FROM ordens_servico os
-            JOIN clientes c ON os.cliente_id = c.id
-            ORDER BY os.id DESC
-        """)
-        dados_os = cursor.fetchall()
-        conn.close()
-        
-        if dados_os:
-            st.dataframe(
-                dados_os,
-                column_config={
-                    "0": "Nº OS",
-                    "1": "Cliente",
-                    "2": "Aparelho",
-                    "3": "Defeito",
-                    "4": "Status",
-                    "5": "Valor (R$)",
-                    "6": "Obs"
-                },
-                use_container_width=True
-            )
-        else:
-            st.info("Nenhuma Ordem de Serviço cadastrada ainda.")
-
-# ---------------------------------------------------------
-# MÓDULO 5: PDV / VENDAS
-# ---------------------------------------------------------
-elif modulo == "PDV / Vendas":
-    st.header("🛒 Ponto de Venda (PDV)")
-    
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome, quantidade, preco_venda FROM estoque WHERE quantidade > 0")
-    produtos = cursor.fetchall()
-    conn.close()
-    
-    dict_produtos = {f"{p[1]} (Disp: {p[2]} | R$ {p[3]:.2f})": p for p in produtos}
-    
-    if not dict_produtos:
-        st.warning("Nenhum produto com estoque disponível. Cadastre itens no módulo 'Estoque'.")
+    if not clientes:
+        st.warning("Cadastre primeiro um cliente no menu 'Clientes'.")
     else:
-        with st.form("form_venda", clear_on_submit=True):
-            prod_selecionado = st.selectbox("Selecione o Produto *", options=list(dict_produtos.keys()))
-            qtd_venda = st.number_input("Quantidade *", min_value=1, step=1)
-            
-            concluir_venda = st.form_submit_button("Registrar Venda")
-            
-            if concluir_venda:
-                item_dados = dict_produtos[prod_selecionado]
-                item_id, item_nome, item_qtd, item_preco = item_dados[0], item_dados[1], item_dados[2], item_dados[3]
+        dict_clientes = {f"{c[1]} (ID: {c[0]})": c[0] for c in clientes}
+        
+        with st.form("form_nova_os"):
+            cliente_sel = st.selectbox("Selecione o Cliente *", options=list(dict_clientes.keys()))
+            c1, c2 = st.columns(2)
+            with c1:
+                dt_entrada = st.date_input("Data Entrada", value=date.today())
+                aparelho = st.text_input("Modelo do Aparelho *", placeholder="Ex: Moto G7")
+            with c2:
+                dt_saida = st.date_input("Previsão Saída", value=date.today())
+                marca = st.text_input("Marca", placeholder="Ex: Motorola")
                 
-                if qtd_venda > item_qtd:
-                    st.error(f"Quantidade insuficiente em estoque! Disponível: {item_qtd}")
+            defeito = st.text_area("Defeito Relatado / Reclamação *")
+            status = st.selectbox("Status Inicial", ["Aberta", "Aguardando peça", "Aguardando cliente", "Em andamento"])
+            
+            submeter = st.form_submit_button("Criar e Avançar para Itens/Garantia")
+            
+            if submeter:
+                if not aparelho.strip() or not defeito.strip():
+                    st.error("Preencha o modelo do aparelho e o defeito!")
                 else:
-                    valor_total = item_preco * qtd_venda
-                    data_hoje = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    
+                    c_id = dict_clientes[cliente_sel]
                     conn = get_connection()
                     cursor = conn.cursor()
-                    # Baixa no estoque
-                    cursor.execute("UPDATE estoque SET quantidade = quantidade - ? WHERE id = ?", (qtd_venda, item_id))
-                    # Lançamento no financeiro/vendas
-                    cursor.execute(
-                        "INSERT INTO vendas (descricao, valor, data, tipo) VALUES (?, ?, ?, ?)",
-                        (f"Venda: {qtd_venda}x {item_nome}", valor_total, data_hoje, "PDV")
-                    )
+                    cursor.execute("""
+                        INSERT INTO ordens_servico (cliente_id, aparelho, marca, defeito, status, data_entrada, previsao_saida)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (c_id, aparelho, marca, defeito, status, dt_entrada.strftime("%d/%m/%Y"), dt_saida.strftime("%d/%m/%Y")))
                     conn.commit()
+                    new_id = cursor.lastrowid
                     conn.close()
-                    
-                    st.success(f"Venda de {qtd_venda}x {item_nome} no valor de **R$ {valor_total:.2f}** realizada com sucesso!")
+                    st.success(f"OS #{new_id} gerada com sucesso!")
 
 # ---------------------------------------------------------
-# MÓDULO 6: FINANCEIRO
+# MÓDULO 3: CLIENTES
 # ---------------------------------------------------------
-elif modulo == "Financeiro":
-    st.header("💰 Controle Financeiro")
-    
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT SUM(valor) FROM vendas")
-    total_faturado = cursor.fetchone()[0] or 0.0
-    
-    cursor.execute("SELECT id, descricao, valor, data, tipo FROM vendas ORDER BY id DESC")
-    historico = cursor.fetchall()
-    conn.close()
-    
-    st.metric("Faturamento Total Registrado", f"R$ {total_faturado:.2f}")
-    st.subheader("Histórico de Entradas")
-    
-    if historico:
-        st.dataframe(
-            historico,
-            column_config={
-                "0": "ID",
-                "1": "Descrição",
-                "2": "Valor (R$)",
-                "3": "Data/Hora",
-                "4": "Origem"
-            },
-            use_container_width=True
-        )
-    else:
-        st.info("Nenhum lançamento financeiro até o momento.")
+elif modulo == "Clientes":
+    st.subheader("👥 Cadastro de Clientes")
+    with st.form("form_cli", clear_on_submit=True):
+        nome = st.text_input("Nome Completo *")
+        tel = st.text_input("Telefone")
+        end = st.text_input("Endereço Completo")
+        cpf = st.text_input("CPF/CNPJ")
+        
+        if st.form_submit_button("Salvar Cliente"):
+            if nome.strip():
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO clientes (nome, telefone, endereco, cpf_cnpj) VALUES (?, ?, ?, ?)", (nome, tel, end, cpf))
+                conn.commit()
+                conn.close()
+                st.success("Cliente guardado com sucesso!")
+            else:
+                st.error("O Nome é obrigatório.")
