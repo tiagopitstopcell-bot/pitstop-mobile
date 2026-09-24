@@ -139,11 +139,11 @@ if st.session_state.pagina == "Início":
             st.session_state.pagina = "NOVA_OS"
             st.rerun()
 
-        if st.button("💰\n\nFluxo de Caixa", use_container_width=True):
-            st.session_state.pagina = "CAIXA"
+        if st.button("💵\n\nVenda Rápida", use_container_width=True):
+            st.session_state.pagina = "VENDA_RAPIDA"
             st.rerun()
 
-        if st.button("📊\n\nRelatório Pedidos", use_container_width=True):
+        if st.button("💰\n\nFluxo de Caixa", use_container_width=True):
             st.session_state.pagina = "CAIXA"
             st.rerun()
 
@@ -298,19 +298,13 @@ elif st.session_state.pagina == "OS_LISTA":
             st.markdown("---")
             st.subheader(f"🖨️ Comprovante — OS #{os_sel}")
 
-            tipo_imp = st.radio(
-                "Formato:",
-                ["Impressão A4 (Completa)", "Térmica (Cupom)"],
-                horizontal=True,
-            )
-
             conn = conectar_db()
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT o.id, o.data_entrada, o.previsao_saida, c.nome, c.cpf_cnpj, c.telefone,
+                SELECT o.id, o.data_entrada, o.previsao_saida, c.nome, c.cpf_cnpj, c.telefone, c.endereco,
                        o.marca, o.aparelho, o.cor, o.imei, o.acessorios, o.defeito,
-                       o.valor_peca, o.mao_de_obra, o.desconto, o.total, o.garantia
+                       o.valor_peca, o.mao_de_obra, o.desconto, o.total, o.garantia, o.condicao_pagamento
                 FROM ordens o LEFT JOIN clientes c ON o.cliente_id = c.id WHERE o.id = ?
             """,
                 (os_sel,),
@@ -319,45 +313,108 @@ elif st.session_state.pagina == "OS_LISTA":
             conn.close()
 
             if d:
-                if tipo_imp == "Impressão A4 (Completa)":
-                    st.code(
-                        f"""
-================================================================
-                    PITSTOP CELL - ORDENS DE SERVIÇO Nº {d[0]}
-================================================================
-CLIENTE: {d[3]} | FONE: {d[5]} | CPF: {d[4] if d[4] else 'N/I'}
-EQUIPAMENTO: {d[6]} {d[7]} ({d[8]}) | IMEI: {d[9]}
-ACESSÓRIOS: {d[10]}
-DEFEITO: {d[11]}
-----------------------------------------------------------------
-SERVIÇOS: R$ {d[13]:.2f} | PEÇAS: R$ {d[12]:.2f} | DESC: R$ {d[14]:.2f}
-TOTAL DA OS: R$ {d[15]:.2f}
-GARANTIA: {d[16]}
-================================================================
-""",
-                        language="text",
-                    )
-                else:
-                    st.code(
-                        f"""
-========================================
-              PITSTOP CELL
-========================================
-OS Nº: {d[0]}      Data: {d[1]}
-CLIENTE: {d[3]}
-APARELHO: {d[7]}
-DEFEITO: {d[11]}
-TOTAL: R$ {d[15]:.2f}
-========================================
-""",
-                        language="text",
-                    )
+                texto_recibo = f"""
+==================================================
+                   PITSTOP CELL
+        Assistência Técnica e Celulares
+   Fone: (48) 99999-9999 | Palhoça - SC
+==================================================
+            Ordem de Serviço Nº {d[0]}
+--------------------------------------------------
+Garantia Até: {d[17]}
+Data Entrada: {d[1]}      Previsão Saída: {d[2] if d[2] else 'A combinar'}
+--------------------------------------------------
+Cliente: {d[3] if d[3] else 'Não informado'}
+Endereço: {d[6] if d[6] else 'Não informado'}
+CPF/CNPJ: {d[4] if d[4] else 'Não informado'}
+Fone: {d[5] if d[5] else 'Não informado'}
+--------------------------------------------------
+Modelo: {d[8]} ({d[9] if d[9] else 'Cor N/I'})  Acessórios: {d[11] if d[11] else 'Nenhum'}
+Marca: {d[7]}                    Tipo: Manutenção
+--------------------------------------------------
+Reclamação / Defeito:
+{d[12]}
+--------------------------------------------------
+Condição de pagamento: {d[18]}
+Observação: Aparelho deixado para orçamento/reparo.
+
+TERMO DE GARANTIA E CONDIÇÕES:
+1. A garantia cobre apenas defeitos da peça substituída ou serviço executado.
+2. A garantia PERDE A VALIDADE em caso de: Quedas, impactos, contato com água/líquidos, mau uso, violação ou remoção de lacres de segurança.
+3. Aparelhos não retirados no prazo de 90 dias após a conclusão do serviço serão considerados abandonados e poderão ser vendidos para cobrir custos de armazenamento e manutenção, conforme o Código Civil.
+==================================================
+Peças Substituídas:
+- Peças / Componentes: R$ {d[13]:.2f}
+--------------------------------------------------
+Serviços Realizados (Mão de Obra):
+- Mão de Obra: R$ {d[14]:.2f}
+--------------------------------------------------
+Valor Desconto: R$ {d[15]:.2f}
+VALOR TOTAL: R$ {d[16]:.2f}
+==================================================
+"""
+                st.code(texto_recibo, language="text")
 
             if st.button("Fechar Comprovante"):
                 st.session_state.impressao_os = None
                 st.rerun()
     else:
         st.info("Nenhuma OS encontrada.")
+
+
+# ==========================================
+# 💵 VENDA RÁPIDA (BALCÃO / COP)
+# ==========================================
+elif st.session_state.pagina == "VENDA_RAPIDA":
+    if st.button("← Voltar ao Início"):
+        st.session_state.pagina = "Início"
+        st.rerun()
+
+    st.subheader("💵 Venda Rápida / Balcão")
+
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, descricao, preco_venda, quantidade FROM produtos WHERE quantidade > 0")
+    produtos_disp = cursor.fetchall()
+    conn.close()
+
+    if produtos_disp:
+        dict_prods = {f"{p[1]} (Estoque: {p[3]} - R$ {p[2]:.2f})": p for p in produtos_disp}
+        
+        with st.form("form_venda_rapida"):
+            prod_escolhido = st.selectbox("Selecione o Produto / Peça", list(dict_prods.keys()))
+            qtd_venda = st.number_input("Quantidade", min_value=1, value=1)
+            forma_pg = st.selectbox("Forma de Pagamento", ["PIX", "Dinheiro", "Cartão de Crédito", "Cartão de Débito"])
+            cliente_venda = st.text_input("Nome do Cliente (Opcional)")
+
+            btn_finalizar_venda = st.form_submit_button("🛒 Concluir Venda", type="primary")
+
+            if btn_finalizar_venda:
+                p_id, p_desc, p_preco, p_qtd_atual = dict_prods[prod_escolhido]
+                
+                if qtd_venda > p_qtd_atual:
+                    st.error("Quantidade solicitada maior que o estoque disponível!")
+                else:
+                    total_venda = p_preco * qtd_venda
+                    dt_hoje = datetime.now().strftime("%d/%m/%Y")
+                    
+                    conn = conectar_db()
+                    cursor = conn.cursor()
+                    
+                    nova_qtd = p_qtd_atual - qtd_venda
+                    cursor.execute("UPDATE produtos SET quantidade = ? WHERE id = ?", (nova_qtd, p_id))
+                    
+                    cli_str = f" - Cliente: {cliente_venda}" if cliente_venda else ""
+                    cursor.execute(
+                        "INSERT INTO caixa (data, tipo, descricao, valor, forma_pagamento) VALUES (?, ?, ?, ?, ?)",
+                        (dt_hoje, "Entrada", f"Venda Balcão: {qtd_venda}x {p_desc}{cli_str}", total_venda, forma_pg)
+                    )
+                    
+                    conn.commit()
+                    conn.close()
+                    st.success(f"✅ Venda de R$ {total_venda:.2f} realizada com sucesso!")
+    else:
+        st.info("Nenhum produto cadastrado com estoque disponível para venda.")
 
 
 # ==========================================
