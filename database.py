@@ -5,7 +5,7 @@ def init_db():
     conn = sqlite3.connect("pitstop.db")
     cursor = conn.cursor()
 
-    # 1. Tabela de Clientes
+    # Tabela de Clientes
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS clientes (
@@ -18,7 +18,7 @@ def init_db():
     """
     )
 
-    # 2. Tabela de Produtos / Estoque
+    # Tabela de Produtos / Estoque
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS produtos (
@@ -33,7 +33,7 @@ def init_db():
     """
     )
 
-    # 3. Tabela de Ordens de Serviço
+    # Tabela de Ordens de Serviço
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS ordens (
@@ -59,13 +59,13 @@ def init_db():
     """
     )
 
-    # 4. Tabela de Movimentações de Caixa
+    # Tabela de Movimentações de Caixa
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS caixa (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             data TEXT NOT NULL,
-            tipo TEXT NOT NULL, -- 'Entrada' ou 'Saída'
+            tipo TEXT NOT NULL,
             descricao TEXT NOT NULL,
             valor REAL NOT NULL,
             forma_pagamento TEXT
