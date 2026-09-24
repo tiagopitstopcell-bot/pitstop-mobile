@@ -6,11 +6,11 @@ import pandas as pd
 import streamlit as st
 from database import init_db
 
-NOME_LOGO = "Screenshot_20260924-093550.png"
+NOME_LOGO = "IMG-20260924-WA0001.jpg"
 
-# Configuração da página (Mobile First)
+# Configuração Mobile Primeiro
 st.set_page_config(
-    page_title="PitStop Cell — Ordem de Serviço",
+    page_title="PitStop Cell — Assistência Técnica",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -23,123 +23,148 @@ def conectar_db():
     return sqlite3.connect("pitstop.db")
 
 
-# Controle de Estado da Navegação (Para os Botões do Painel funcionarem)
 if "pagina" not in st.session_state:
-    st.session_state.pagina = "🏠 Painel Principal"
+    st.session_state.pagina = "🏠 Início"
+
+if "impressao_os" not in st.session_state:
+    st.session_state.impressao_os = None
 
 
 def navegar_para(nome_pagina):
     st.session_state.pagina = nome_pagina
 
 
-# --- SIDEBAR (Navegação Alternativa) ---
+# ESTILO VISUAL INSPIRADO NO MODELO
+st.markdown(
+    """
+    <style>
+    .main { background-color: #f4f6f9; }
+    div.stButton > button {
+        border-radius: 8px;
+        font-weight: bold;
+    }
+    .card-menu {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
+        border: 1px solid #e0e0e0;
+        margin-bottom: 10px;
+    }
+    .card-os {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0px 2px 4px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 12px;
+    }
+    .badge-status {
+        padding: 4px 12px;
+        border-radius: 15px;
+        color: white;
+        font-weight: bold;
+        font-size: 0.8rem;
+        display: inline-block;
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+# --- NAVEGAÇÃO LATERAL (OPCIONAL) ---
 with st.sidebar:
     if os.path.exists(NOME_LOGO):
         st.image(NOME_LOGO, use_container_width=True)
     st.title("PitStop Cell")
-    st.caption("Celulares e Informática")
+    st.caption("Assistência Técnica")
     st.markdown("---")
-
-    opcoes_menu = [
-        "🏠 Painel Principal",
-        "🆕 Nova OS",
-        "📦 Estoque & Peças",
-        "👥 Clientes",
-        "💰 Caixa & Financeiro",
-    ]
-
-    escolha = st.radio(
-        "Navegação",
-        opcoes_menu,
-        index=opcoes_menu.index(st.session_state.pagina),
+    menu = st.radio(
+        "Navegar",
+        [
+            "🏠 Início",
+            "📋 Ordens de Serviço",
+            "🆕 Nova OS",
+            "📦 Produtos",
+            "👥 Clientes",
+            "💰 Caixa & Relatórios",
+        ],
     )
-    if escolha != st.session_state.pagina:
-        st.session_state.pagina = escolha
+    if menu != st.session_state.pagina:
+        st.session_state.pagina = menu
 
-    st.markdown("---")
-    st.caption(f"PitStop Cell © {date.today().year}")
 
-# --- CABEÇALHO DA LOJA ---
-col_logo, col_tit = st.columns([1, 4])
-with col_logo:
+# --- TOPO DA APLICAÇÃO ---
+col_head1, col_head2 = st.columns([1, 4])
+with col_head1:
     if os.path.exists(NOME_LOGO):
-        st.image(NOME_LOGO, width=80)
-with col_tit:
-    st.title("PitStop Cell")
-    st.caption("Sistema de Ordem de Serviço Pró")
-
-st.markdown("---")
-
-# --- PAINEL DE BOTÕES DE ACESSO RÁPIDO (MENU VISUAL MOBILE) ---
-st.write("### ⚡ Acesso Rápido")
-btn_col1, btn_col2, btn_col3, btn_col4, btn_col5 = st.columns(5)
-
-with btn_col1:
-    if st.button("🏠 Painel OS", use_container_width=True):
-        navegar_para("🏠 Painel Principal")
-        st.rerun()
-with btn_col2:
-    if st.button("🆕 Nova OS", use_container_width=True, type="primary"):
-        navegar_para("🆕 Nova OS")
-        st.rerun()
-with btn_col3:
-    if st.button("📦 Estoque", use_container_width=True):
-        navegar_para("📦 Estoque & Peças")
-        st.rerun()
-with btn_col4:
-    if st.button("👥 Clientes", use_container_width=True):
-        navegar_para("👥 Clientes")
-        st.rerun()
-with btn_col5:
-    if st.button("💰 Caixa", use_container_width=True):
-        navegar_para("💰 Caixa & Financeiro")
-        st.rerun()
+        st.image(NOME_LOGO, width=70)
+with col_head2:
+    st.markdown("### **PitStop Cell**")
+    st.caption("Assistência Técnica e Celulares")
 
 st.markdown("---")
 
 
 # ==========================================
-# PÁGINA 1: PAINEL PRINCIPAL
+# TELA INICIAL: GRID DE MENU (ESTILO APP NATIVO)
 # ==========================================
-if st.session_state.pagina == "🏠 Painel Principal":
-    st.subheader("🏠 Painel Geral & Ordens de Serviço")
+if st.session_state.pagina == "🏠 Início":
+    st.subheader("Bem-vindo à PitStop Cell")
 
-    # Métricas / Resumo Rápido
-    conn = conectar_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT COUNT(*) FROM ordens WHERE status NOT IN ('Concluído', 'Entregue', 'Cancelado')"
-    )
-    os_ativas = cursor.fetchone()[0]
+    # Grid 2 Colunas para celular
+    g1, g2 = st.columns(2)
 
-    cursor.execute("SELECT SUM(total) FROM ordens")
-    total_faturado = cursor.fetchone()[0] or 0.0
+    with g1:
+        if st.button("📋 Ordem Serviço", use_container_width=True):
+            navegar_para("📋 Ordens de Serviço")
+            st.rerun()
 
-    cursor.execute("SELECT SUM(quantidade) FROM produtos")
-    total_pecas = cursor.fetchone()[0] or 0
-    conn.close()
+        if st.button("👥 Clientes", use_container_width=True):
+            navegar_para("👥 Clientes")
+            st.rerun()
 
-    m1, m2, m3 = st.columns(3)
-    m1.metric("OS em Andamento", f"{os_ativas}")
-    m2.metric("Total em OS", f"R$ {total_faturado:.2f}")
-    m3.metric("Peças no Estoque", f"{total_pecas} un.")
+        if st.button("📦 Produtos", use_container_width=True):
+            navegar_para("📦 Produtos")
+            st.rerun()
 
-    st.markdown("---")
+    with g2:
+        if st.button("🆕 Nova OS", use_container_width=True, type="primary"):
+            navegar_para("🆕 Nova OS")
+            st.rerun()
 
-    # Busca e Filtros
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        busca = st.text_input(
-            "🔍 Buscar por OS, Cliente ou Aparelho", placeholder="Ex: iPhone, João, #10..."
-        )
-    with c2:
-        apenas_ativas = st.toggle("Apenas OS em Andamento", value=True)
+        if st.button("💰 Fluxo de Caixa", use_container_width=True):
+            navegar_para("💰 Caixa & Relatórios")
+            st.rerun()
+
+        if st.button("📊 Relatórios", use_container_width=True):
+            navegar_para("💰 Caixa & Relatórios")
+            st.rerun()
+
+
+# ==========================================
+# PAINEL DE ORDENS DE SERVIÇO
+# ==========================================
+elif st.session_state.pagina == "📋 Ordens de Serviço":
+    st.subheader("📋 Ordens de Serviço")
+
+    col_b1, col_b2 = st.columns([3, 1])
+    with col_b1:
+        busca = st.text_input("🔍 OS ou Cliente", placeholder="Pesquisar...")
+    with col_b2:
+        if st.button("➕ Nova", type="primary", use_container_width=True):
+            navegar_para("🆕 Nova OS")
+            st.rerun()
+
+    somente_andamento = st.toggle("Listar somente OS em andamento", value=True)
 
     conn = conectar_db()
     cursor = conn.cursor()
 
     query = """
-        SELECT o.id, o.data_entrada, c.nome, c.telefone, o.aparelho, o.defeito, o.status, o.total, o.garantia, o.imei
+        SELECT o.id, o.data_entrada, o.previsao_saida, c.nome, o.aparelho, o.status, o.total, o.defeito, o.cor, o.senha, o.acessorios, c.telefone
         FROM ordens o
         LEFT JOIN clientes c ON o.cliente_id = c.id
         WHERE 1=1
@@ -150,8 +175,8 @@ if st.session_state.pagina == "🏠 Painel Principal":
         query += " AND (c.nome LIKE ? OR o.aparelho LIKE ? OR CAST(o.id AS TEXT) = ?)"
         params.extend([f"%{busca}%", f"%{busca}%", busca])
 
-    if apenas_ativas:
-        query += " AND o.status NOT IN ('Concluído', 'Cancelado', 'Entregue')"
+    if somente_andamento:
+        query += " AND o.status NOT IN ('Concluído', 'Entregue', 'Cancelado')"
 
     query += " ORDER BY o.id DESC"
     cursor.execute(query, params)
@@ -161,148 +186,232 @@ if st.session_state.pagina == "🏠 Painel Principal":
     if ordens:
         for (
             os_id,
-            dt,
+            dt_in,
+            dt_out,
             cliente,
-            tel,
             aparelho,
-            defeito,
             status,
             total,
-            garantia,
-            imei,
+            defeito,
+            cor,
+            senha,
+            acessorios,
+            tel,
         ) in ordens:
             with st.container():
+                cor_badge = "#007bff"
+                if "Aguardando" in status:
+                    cor_badge = "#dc3545"
+                elif "Andamento" in status or "orçamento" in status:
+                    cor_badge = "#ffc107"
+                elif "Pronto" in status or "Concluído" in status:
+                    cor_badge = "#28a745"
+
                 st.markdown(
                     f"""
-                    <div style="background-color: #1a1a1a; padding: 14px; border-radius: 8px; border-left: 6px solid #e50914; margin-bottom: 8px;">
-                        <span style="font-size: 0.85rem; color: #e50914; font-weight: bold;">OS #{os_id} | Entrou: {dt}</span><br>
-                        <span style="font-size: 1.15rem; font-weight: bold; color: #ffffff;">👤 {cliente if cliente else 'Cliente s/ Cadastro'}</span> 
-                        <span style="font-size: 0.85rem; color: #aaaaaa;">({tel if tel else 'Sem Tel'})</span><br>
-                        <span style="font-size: 0.95rem; color: #dddddd;">📱 <b>Aparelho:</b> {aparelho} {f'| IMEI: {imei}' if imei else ''}</span><br>
-                        <span style="font-size: 0.9rem; color: #bbbbbb;">🛠️ <b>Defeito:</b> {defeito}</span><br>
-                        <span style="font-size: 1.05rem; color: #28a745; font-weight: bold;">💰 Total: R$ {total:.2f}</span>
+                    <div class="card-os">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <strong>OS Nº: {os_id}</strong>
+                            <span class="badge-status" style="background-color: {cor_badge};">{status}</span>
+                        </div>
+                        <div style="font-size: 0.9rem; color: #555; margin-top:5px;">
+                            <b>Data Entrada:</b> {dt_in} | <b>Previsão:</b> {dt_out if dt_out else 'N/I'}<br>
+                            <b>Cliente:</b> {cliente if cliente else 'Não Identificado'} ({tel if tel else ''})<br>
+                            <b>Aparelho:</b> {aparelho} {f'({cor})' if cor else ''}<br>
+                            <b>Defeito:</b> {defeito}<br>
+                            <b>Total:</b> <span style="color:#28a745; font-weight:bold;">R$ {total:.2f}</span>
+                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
-                col_st, col_pr = st.columns([1, 1])
-                with col_st:
-                    st.info(f"Status: {status}")
-                with col_pr:
-                    if st.button(
-                        f"📄 Imprimir Comprovante #{os_id}", key=f"p_{os_id}"
-                    ):
-                        st.subheader(
-                            f"🖨️ Comprovante PitStop Cell — OS #{os_id}"
+                c_act1, c_act2, c_act3 = st.columns([1, 1, 1])
+                with c_act1:
+                    if st.button(f"🖨️ Imprimir", key=f"pr_{os_id}"):
+                        st.session_state.impressao_os = os_id
+                with c_act2:
+                    if st.button(f"✏️ Editar", key=f"ed_{os_id}"):
+                        st.toast(
+                            f"Modo edição para OS #{os_id} em breve.", icon="✏️"
                         )
-                        st.code(
-                            f"""
-==================================================
-              PITSTOP CELL
-        Celulares e Informática
-==================================================
-OS Nº: {os_id}          Data: {dt}
-Cliente: {cliente if cliente else 'Cliente Geral'}
-Contato: {tel if tel else 'N/I'}
-Aparelho: {aparelho}
-Defeito: {defeito}
---------------------------------------------------
-TOTAL: R$ {total:.2f}
-Garantia: {garantia if garantia else '90 dias'}
-Status: {status}
-==================================================
-""",
-                            language="text",
+                with c_act3:
+                    if st.button(f"✅ Finalizar", key=f"fin_{os_id}"):
+                        conn = conectar_db()
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "UPDATE ordens SET status = 'Pronto' WHERE id = ?",
+                            (os_id,),
                         )
+                        conn.commit()
+                        conn.close()
+                        st.success(f"OS #{os_id} Finalizada!")
+                        st.rerun()
+
                 st.divider()
-    else:
-        st.info("Nenhuma Ordem de Serviço cadastrada ainda. Clique em '🆕 Nova OS' para começar!")
+
+        # MODAL / PAINEL DE IMPRESSÃO
+        if st.session_state.impressao_os:
+            os_sel = st.session_state.impressao_os
+            st.markdown("---")
+            st.subheader(f"🖨️ Opções de Impressão — OS #{os_sel}")
+
+            tipo_imp = st.radio(
+                "Qual tipo de impressão deseja?",
+                ["Impressão A4 (Completa)", "Térmica (Cupom)"],
+                horizontal=True,
+            )
+
+            conn = conectar_db()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT o.id, o.data_entrada, o.previsao_saida, c.nome, c.cpf_cnpj, c.telefone, c.endereco,
+                       o.marca, o.aparelho, o.cor, o.imei, o.acessorios, o.defeito, o.diagnostico,
+                       o.valor_peca, o.mao_de_obra, o.desconto, o.total, o.garantia, o.condicao_pagamento
+                FROM ordens o LEFT JOIN clientes c ON o.cliente_id = c.id WHERE o.id = ?
+            """,
+                (os_sel,),
+            )
+            d = cursor.fetchone()
+            conn.close()
+
+            if d:
+                if tipo_imp == "Impressão A4 (Completa)":
+                    st.code(
+                        f"""
+================================================================================
+                                ORDEM DE SERVIÇO Nº {d[0]}
+                                PitStop Cell
+================================================================================
+DADOS DO CLIENTE
+Nome: {d[3]}
+Endereço: {d[6] if d[6] else 'N/I'}
+Telefone: {d[5]}                  CPF/CNPJ: {d[4] if d[4] else 'N/I'}
+--------------------------------------------------------------------------------
+INFORMAÇÕES DO PRODUTO
+Marca: {d[7]}          Modelo: {d[8]}          Cor: {d[9]}
+IMEI/Série: {d[10]}    Acessórios: {d[11]}
+--------------------------------------------------------------------------------
+DIAGNÓSTICO E SERVIÇO A SER PRESTADO
+Reclamação/Defeito: {d[12]}
+Solução/Diagnóstico: {d[13]}
+--------------------------------------------------------------------------------
+ORÇAMENTO & GARANTIA
+Serviços: R$ {d[15]:.2f}    Peças: R$ {d[14]:.2f}    Desconto: R$ {d[16]:.2f}
+VALOR FINAL: R$ {d[17]:.2f}
+Garantia até: {d[18]} | Condição: {d[19] if d[19] else 'À Vista/Cartão'}
+--------------------------------------------------------------------------------
+CHECKLIST GERAL DE DIAGNÓSTICO
+[X] Estado Geral   [X] Botões/Tela   [X] Conectividade   [X] Bateria/Carga
+================================================================================
+""",
+                        language="text",
+                    )
+                else:
+                    st.code(
+                        f"""
+========================================
+              PITSTOP CELL
+        Assistência Técnica
+========================================
+OS Nº: {d[0]}
+Data Entrada: {d[1]}
+Previsão Saída: {d[2]}
+----------------------------------------
+CLIENTE: {d[3]}
+FONE: {d[5]}
+----------------------------------------
+EQUIPAMENTO: {d[8]} ({d[9]})
+DEFEITO: {d[12]}
+----------------------------------------
+TOTAL: R$ {d[17]:.2f}
+Garantia: {d[18]}
+========================================
+""",
+                        language="text",
+                    )
+
+            if st.button("Fechar Impressão"):
+                st.session_state.impressao_os = None
+                st.rerun()
 
 
 # ==========================================
-# PÁGINA 2: NOVA OS
+# FORMULÁRIO COMPLETO DE NOVA OS
 # ==========================================
 elif st.session_state.pagina == "🆕 Nova OS":
-    st.subheader("➕ Nova Ordem de Serviço — PitStop Cell")
+    st.subheader("🆕 Nova Ordem de Serviço")
 
     conn = conectar_db()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM clientes ORDER BY nome")
     lista_cli = cursor.fetchall()
     dict_cli = {nome: cid for cid, nome in lista_cli}
-
-    cursor.execute(
-        "SELECT id, descricao, preco_venda FROM produtos ORDER BY descricao"
-    )
-    lista_prod = cursor.fetchall()
-    dict_prod = {
-        f"{desc} (R$ {prec:.2f})": (pid, prec) for pid, desc, prec in lista_prod
-    }
     conn.close()
 
-    with st.form("form_os", clear_on_submit=True):
-        st.markdown("### 1. Cliente")
+    with st.form("form_nova_os_pro", clear_on_submit=True):
+        st.markdown("### 👤 Cliente")
         opt_cli = st.selectbox(
-            "Cliente Cadastrado",
-            ["-- Cadastrar Novo Cliente --"] + list(dict_cli.keys()),
+            "Cliente", ["-- Novo Cliente --"] + list(dict_cli.keys())
         )
-        c_nome = st.text_input("Nome do Novo Cliente (se aplicável)")
+        c_nome = st.text_input("Nome Completo")
         c_tel = st.text_input("Telefone / WhatsApp")
 
         st.markdown("---")
-        st.markdown("### 2. Equipamento")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            aparelho = st.text_input(
-                "Modelo do Aparelho", placeholder="Ex: iPhone 11 / Moto G8"
-            )
-        with col_b:
-            imei = st.text_input("IMEI / Nº de Série")
+        st.markdown("### 📱 Equipamento")
+        col1, col2 = st.columns(2)
+        with col1:
+            marca = st.text_input("Marca (Ex: Motorola, Apple, Samsung)")
+            aparelho = st.text_input("Modelo (Ex: Moto G8, iPhone 11)")
+            cor = st.text_input("Cor (Ex: Azul, Preto)")
+        with col2:
+            dt_saida = st.date_input("Previsão de Saída")
+            imei = st.text_input("Número de Série / IMEI")
+            senha = st.text_input("Senha / Padrão do Aparelho")
 
-        defeito = st.text_area("Defeito Relatado")
-        diagnostico = st.text_area("Diagnóstico Técnico / Observações")
+        acessorios = st.text_input(
+            "Acessórios Deixados", placeholder="Ex: Deixou capa e carregador"
+        )
+        defeito = st.text_area("Defeito / Reclamação")
 
         st.markdown("---")
-        st.markdown("### 3. Peça, Mão de Obra e Valores")
-        opt_peca = st.selectbox(
-            "Selecione Peça do Estoque (opcional)",
-            ["-- Nenhuma / Peça Própria --"] + list(dict_prod.keys()),
-        )
-
-        col_v1, col_v2, col_v3 = st.columns(3)
-        with col_v1:
+        st.markdown("### 💰 Orçamento & Serviços")
+        c_v1, c_v2, c_v3 = st.columns(3)
+        with c_v1:
             valor_peca = st.number_input(
-                "Valor Peça (R$)", min_value=0.0, step=5.0
+                "Valor Peças (R$)", min_value=0.0, step=5.0
             )
-        with col_v2:
+        with c_v2:
             mao_obra = st.number_input(
                 "Mão de Obra (R$)", min_value=0.0, step=10.0
             )
-        with col_v3:
-            desconto = st.number_input(
-                "Desconto (R$)", min_value=0.0, step=5.0
-            )
+        with c_v3:
+            desconto = st.number_input("Desconto (R$)", min_value=0.0, step=5.0)
 
-        garantia = st.text_input("Termos de Garantia", value="90 dias contra defeitos do serviço")
+        garantia = st.text_input("Garantia", value="30 dias")
+        cond_pag = st.selectbox(
+            "Condição de Pagamento",
+            ["PIX", "Dinheiro", "Cartão de Crédito", "Cartão de Débito"],
+        )
         status_in = st.selectbox(
-            "Status Inicial",
+            "Situação / Status",
             [
-                "Recebido",
-                "Em Análise",
-                "Aguardando Peça",
-                "Em Andamento",
+                "Em orçamento",
+                "Aguardando cliente",
+                "Aguardando peça",
+                "Em andamento",
                 "Pronto",
             ],
         )
 
-        salvar = st.form_submit_button("💾 Salvar OS na PitStop Cell", type="primary")
+        salvar = st.form_submit_button("💾 Cadastrar OS", type="primary")
 
         if salvar:
             conn = conectar_db()
             cursor = conn.cursor()
 
-            if opt_cli == "-- Cadastrar Novo Cliente --":
+            if opt_cli == "-- Novo Cliente --":
                 if c_nome:
                     cursor.execute(
                         "INSERT INTO clientes (nome, telefone) VALUES (?, ?)",
@@ -314,136 +423,120 @@ elif st.session_state.pagina == "🆕 Nova OS":
             else:
                 cliente_id = dict_cli[opt_cli]
 
-            peca_id = None
-            if opt_peca != "-- Nenhuma / Peça Própria --":
-                peca_id = dict_prod[opt_peca][0]
-
-            total_calculado = (valor_peca + mao_obra) - desconto
-            data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
+            total_calc = (valor_peca + mao_obra) - desconto
+            dt_entrada = datetime.now().strftime("%d/%m/%Y")
+            dt_saida_str = dt_saida.strftime("%d/%m/%Y")
 
             if aparelho and defeito:
                 cursor.execute(
                     """
-                    INSERT INTO ordens (data_entrada, cliente_id, aparelho, imei, defeito, diagnostico, peca_id, valor_peca, mao_de_obra, desconto, total, status, garantia)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO ordens (data_entrada, previsao_saida, cliente_id, marca, aparelho, cor, imei, senha, acessorios, defeito, valor_peca, mao_de_obra, desconto, total, status, garantia, condicao_pagamento)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
-                        data_hoje,
+                        dt_entrada,
+                        dt_saida_str,
                         cliente_id,
+                        marca,
                         aparelho,
+                        cor,
                         imei,
+                        senha,
+                        acessorios,
                         defeito,
-                        diagnostico,
-                        peca_id,
                         valor_peca,
                         mao_obra,
                         desconto,
-                        total_calculado,
+                        total_calc,
                         status_in,
                         garantia,
+                        cond_pag,
                     ),
                 )
+
+                if total_calc > 0:
+                    cursor.execute(
+                        "INSERT INTO caixa (data, tipo, descricao, valor, forma_pagamento) VALUES (?, ?, ?, ?, ?)",
+                        (
+                            dt_entrada,
+                            "Entrada",
+                            f"OS #{aparelho} - {c_nome if c_nome else 'Cliente'}",
+                            total_calc,
+                            cond_pag,
+                        ),
+                    )
+
                 conn.commit()
                 st.success("✅ Ordem de Serviço cadastrada com sucesso!")
             else:
-                st.error("Preencha ao menos o modelo do aparelho e o defeito.")
+                st.error("Preencha ao menos o Modelo e o Defeito.")
 
             conn.close()
 
 
 # ==========================================
-# PÁGINA 3: ESTOQUE
+# PRODUTOS / ESTOQUE
 # ==========================================
-elif st.session_state.pagina == "📦 Estoque & Peças":
-    st.subheader("📦 Controle de Estoque PitStop Cell")
+elif st.session_state.pagina == "📦 Produtos":
+    st.subheader("📦 Lista de Produtos & Peças")
 
-    with st.expander("➕ Cadastrar Novo Item/Peça no Estoque"):
-        with st.form("form_prod", clear_on_submit=True):
-            p_cod = st.text_input("Código do Produto")
-            p_desc = st.text_input("Descrição (Ex: Tela Samsung A12)")
-            p_cat = st.text_input("Categoria (Ex: Tela, Bateria, Cabo)")
-            col_p1, col_p2, col_p3 = st.columns(3)
-            with col_p1:
-                p_qtd = st.number_input("Quantidade", min_value=0, step=1)
-            with col_p2:
-                p_cost = st.number_input("Custo (R$)", min_value=0.0, step=5.0)
-            with col_p3:
-                p_prec = st.number_input("Preço Venda (R$)", min_value=0.0, step=5.0)
+    with st.expander("➕ Cadastrar Produto"):
+        with st.form("form_prod_pro", clear_on_submit=True):
+            p_desc = st.text_input("Nome / Descrição (Ex: Cabo USB-C, Tela A12)")
+            p_cat = st.text_input("Categoria")
+            p_prec = st.number_input("Preço de Venda (R$)", min_value=0.0)
+            p_qtd = st.number_input("Quantidade", min_value=1, value=1)
+            btn_p = st.form_submit_button("Salvar Produto")
 
-            btn_prod = st.form_submit_button("Cadastrar Produto")
-
-            if btn_prod and p_desc:
+            if btn_p and p_desc:
                 conn = conectar_db()
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO produtos (codigo, descricao, categoria, quantidade, custo, preco_venda) VALUES (?, ?, ?, ?, ?, ?)",
-                    (p_cod, p_desc, p_cat, p_qtd, p_cost, p_prec),
+                    "INSERT INTO produtos (descricao, categoria, preco_venda, quantidade) VALUES (?, ?, ?, ?)",
+                    (p_desc, p_cat, p_prec, p_qtd),
                 )
                 conn.commit()
                 conn.close()
-                st.success("✅ Produto adicionado ao estoque!")
+                st.success("Produto salvo!")
 
     conn = conectar_db()
     df_prod = pd.read_sql_query("SELECT * FROM produtos", conn)
     conn.close()
 
     if not df_prod.empty:
-        st.dataframe(df_prod, use_container_width=True)
+        for idx, row in df_prod.iterrows():
+            st.markdown(
+                f"""
+                <div class="card-os" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <b>Nome:</b> {row['descricao']}<br>
+                        <b>Valor:</b> R$ {row['preco_venda']:.2f} | <b>Qtd:</b> {row['quantidade']}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
     else:
-        st.info("Nenhum produto cadastrado no estoque ainda.")
+        st.info("Nenhum produto cadastrado.")
 
 
 # ==========================================
-# PÁGINA 4: CLIENTES
+# CLIENTES
 # ==========================================
 elif st.session_state.pagina == "👥 Clientes":
-    st.subheader("👥 Cadastro de Clientes")
-
-    with st.expander("➕ Cadastrar Novo Cliente"):
-        with st.form("form_cli_direto", clear_on_submit=True):
-            n_nome = st.text_input("Nome Completo")
-            n_tel = st.text_input("Telefone")
-            n_whats = st.text_input("WhatsApp")
-            n_cpf = st.text_input("CPF / CNPJ")
-            btn_cli = st.form_submit_button("Salvar Cliente")
-
-            if btn_cli and n_nome:
-                conn = conectar_db()
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO clientes (nome, telefone, whatsapp, cpf_cnpj) VALUES (?, ?, ?, ?)",
-                    (n_nome, n_tel, n_whats, n_cpf),
-                )
-                conn.commit()
-                conn.close()
-                st.success("✅ Cliente cadastrado com sucesso!")
-
+    st.subheader("👥 Clientes")
     conn = conectar_db()
     df_cli = pd.read_sql_query("SELECT * FROM clientes", conn)
     conn.close()
-
-    if not df_cli.empty:
-        st.dataframe(df_cli, use_container_width=True)
-    else:
-        st.info("Nenhum cliente cadastrado ainda.")
+    st.dataframe(df_cli, use_container_width=True)
 
 
 # ==========================================
-# PÁGINA 5: CAIXA
+# CAIXA & RELATÓRIOS
 # ==========================================
-elif st.session_state.pagina == "💰 Caixa & Financeiro":
-    st.subheader("💰 Lançamentos de Caixa e Relatório")
-
+elif st.session_state.pagina == "💰 Caixa & Relatórios":
+    st.subheader("💰 Fluxo de Caixa")
     conn = conectar_db()
-    df_os = pd.read_sql_query(
-        "SELECT id AS 'OS Nº', data_entrada AS 'Data', aparelho AS 'Aparelho', total AS 'Valor Total (R$)', status AS 'Status' FROM ordens",
-        conn,
-    )
+    df_cx = pd.read_sql_query("SELECT * FROM caixa ORDER BY id DESC", conn)
     conn.close()
-
-    if not df_os.empty:
-        faturamento_total = df_os["Valor Total (R$)"].sum()
-        st.metric("Faturamento Acumulado (OS)", f"R$ {faturamento_total:.2f}")
-        st.dataframe(df_os, use_container_width=True)
-    else:
-        st.info("Nenhum lançamento financeiro registrado até o momento.")
+    st.dataframe(df_cx, use_container_width=True)
